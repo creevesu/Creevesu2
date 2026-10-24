@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Tropical Island Builder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      :root{
+        --ink:#123332;
+        --ink-soft:#3d5c58;
+        --panel:#fffdf6;
+        --panel-edge:#e8dfc8;
+        --page:#ffe9bd;
+        --page2:#ffd98f;
+        --accent:#ff6b4a;
+        --accent-dark:#e04e2f;
+        --teal:#0e7c7b;
+        --teal-dark:#0a5f5e;
+        --gold:#f5a623;
+        --good:#2e9e5b;
+        --bad:#d64541;
+        --shadow:0 10px 24px rgba(90,50,0,.18);
+        --radius:16px;
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --ink:#eaf6f2;
+          --ink-soft:#a9c8c0;
+          --panel:#17322f;
+          --panel-edge:#2a4a44;
+          --page:#0b2422;
+          --page2:#0e2f2b;
+          --shadow:0 10px 24px rgba(0,0,0,.45);
+        }
+      }
+      *{box-sizing:border-box}
+      html,body{margin:0;padding:0}
+      body{
+        font-family:"Nunito",system-ui,sans-serif;
+        color:var(--ink);
+        background:
+          radial-gradient(1200px 500px at 15% -10%, rgba(255,255,255,.5), transparent 60%),
+          linear-gradient(180deg,var(--page),var(--page2));
+        min-height:100vh;
+      }
+      @media (prefers-color-scheme: dark){
+        body{background:linear-gradient(180deg,var(--page),var(--page2))}
+      }
+      .wrap{max-width:1180px;margin:0 auto;padding:14px 14px 40px}
+
+      /* ---------- Stats bar ---------- */
+      .stats{
+        display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;
+        background:var(--panel);border:2px solid var(--panel-edge);
+        border-radius:var(--radius);box-shadow:var(--shadow);padding:10px 12px;
+      }
+      .stat{display:flex;align-items:center;gap:8px;background:rgba(14,124,123,.08);
+        border-radius:12px;padding:6px 12px 6px 8px;min-width:0}
+      @media (prefers-color-scheme: dark){.stat{background:rgba(255,255,255,.06)}}
+      .stat .ic{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;
+        background:var(--panel);border-radius:9px;font-size:17px;line-height:1}
+      .stat .lab{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+      .stat .val{font-family:"Fredoka",sans-serif;font-size:19px;font-weight:600;line-height:1.05}
+      .stat .val small{font-size:12px;color:var(--ink-soft);font-family:"Nunito",sans-serif;font-weight:800}
+      .stat.warn .val{color:var(--bad)}
+      .daybox{margin-left:auto;display:flex;align-items:center;gap:8px}
+      .daybox .val{font-family:"Fredoka",sans-serif;font-size:19px;font-weight:600;white-space:nowrap}
+      .spd{display:flex;gap:4px}
+      .spd button{
+        font-family:"Nunito",sans-serif;font-weight:800;font-size:13px;cursor:pointer;
+        border:2px solid var(--panel-edge);background:var(--panel);color:var(--ink);
+        border-radius:9px;padding:6px 10px;
+      }
+      .spd button.on{background:var(--teal);border-color:var(--teal-dark);color:#fff}
+      .stars{font-size:17px;letter-spacing:2px;color:var(--gold)}
+      .stars .off{color:var(--panel-edge)}
+
+      /* ---------- Layout ---------- */
+      .layout{display:grid;grid-template-columns:1fr 300px;gap:14px;margin-top:14px;align-items:start}
+      @media (max-width:860px){.layout{grid-template-columns:1fr}}
+
+      .board-card{
+        background:var(--panel);border:2px solid var(--panel-edge);border-radius:20px;
+        box-shadow:var(--shadow);padding:12px;
+      }
+      .board-head{display:flex;align-items:baseline;gap:10px;padding:2px 4px 10px;flex-wrap:wrap}
+      .board-head h1{font-family:"Fredoka",sans-serif;font-size:24px;font-weight:700;margin:0}
+      .board-head p{margin:0;color:var(--ink-soft);font-weight:700;font-size:13px}
+
+      /* ---------- Island grid ---------- */
+      .board{
+        display:grid;gap:3px;
+        grid-template-columns:repeat(11,1fr);
+        background:#0b6e8c;border-radius:14px;padding:8px;
+        box-shadow:inset 0 0 0 3px rgba(255,255,255,.15);
+        user-select:none;-webkit-user-select:none;touch-action:manipulation;
+      }
+      .tile{
+        position:relative;aspect-ratio:1/1;border-radius:22%;
+        display:grid;place-items:center;cursor:pointer;overflow:hidden;
+        transition:transform .08s ease;
+      }
+      .tile svg{width:86%;height:86%;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.18))}
+      .tile.water{background:linear-gradient(160deg,#2aa5c4,#1283ab);cursor:default}
+      .tile.water::after{content:"";position:absolute;inset:0;
+        background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.28) 0 12%, transparent 40%);
+        animation:shimmer 3.4s ease-in-out infinite alternate}
+      @keyframes shimmer{from{opacity:.35}to{opacity:.9}}
+      @media (prefers-reduced-motion: reduce){.tile.water::after{animation:none}}
+      .tile.sand{background:linear-gradient(160deg,#ffe9ae,#f7d67f)}
+      .tile.grass{background:linear-gradient(160deg,#7cc95e,#57ad42)}
+      .tile.rock{background:linear-gradient(160deg,#a9b3a4,#87937f)}
+      .tile.buildable:hover{transform:scale(1.07);z-index:2;box-shadow:0 0 0 3px #fff,0 6px 14px rgba(0,0,0,.25)}
+      .tile.selected{box-shadow:0 0 0 3px var(--accent),0 0 0 6px #fff}
+      .tile .badge{
+        position:absolute;right:2px;top:2px;background:var(--bad);color:#fff;
+        font-size:10px;font-weight:800;border-radius:99px;padding:1px 6px;z-index:3;
+      }
+      .tile.rubble{filter:saturate(.4)}
+
+      /* ---------- Side panel ---------- */
+      .panel{background:var(--panel);border:2px solid var(--panel-edge);border-radius:var(--radius);
+        box-shadow:var(--shadow);padding:14px}
+      .panel h2{font-family:"Fredoka",sans-serif;font-size:17px;margin:0 0 8px;font-weight:600}
+      .panel + .panel{margin-top:14px}
+      .info-body{font-size:14px;font-weight:600;color:var(--ink-soft);line-height:1.45}
+      .info-body b{color:var(--ink)}
+      .info-body .big{font-family:"Fredoka",sans-serif;font-size:19px;color:var(--ink);font-weight:600}
+      .repair-btn,.clear-btn{
+        margin-top:10px;width:100%;border:none;cursor:pointer;border-radius:11px;
+        font-family:"Fredoka",sans-serif;font-weight:600;font-size:15px;padding:10px;
+      }
+      .repair-btn{background:var(--gold);color:#4a2f00}
+      .clear-btn{background:var(--bad);color:#fff}
+
+      .mile{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+      .mile li{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;font-weight:700;color:var(--ink-soft)}
+      .mile li .box{flex:0 0 20px;width:20px;height:20px;border-radius:6px;border:2px solid var(--panel-edge);
+        display:grid;place-items:center;font-size:12px;color:#fff;margin-top:1px}
+      .mile li.done{color:var(--ink)}
+      .mile li.done .box{background:var(--good);border-color:var(--good)}
+
+      .news{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:210px;overflow:auto}
+      .news li{font-size:13px;font-weight:700;color:var(--ink-soft);line-height:1.4;
+        border-left:4px solid var(--panel-edge);padding-left:9px}
+      .news li b{color:var(--ink)}
+      .news li.good{border-color:var(--good)}
+      .news li.bad{border-color:var(--bad)}
+      .news li .d{color:var(--gold);font-weight:800}
+
+      /* ---------- Build palette ---------- */
+      .palette{
+        margin-top:14px;background:var(--panel);border:2px solid var(--panel-edge);
+        border-radius:var(--radius);box-shadow:var(--shadow);padding:12px;
+      }
+      .palette h2{font-family:"Fredoka",sans-serif;font-size:17px;margin:0 0 10px;font-weight:600}
+      .tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+      .tool{
+        border:2px solid var(--panel-edge);background:var(--panel);border-radius:13px;
+        padding:8px 6px 7px;cursor:pointer;text-align:center;color:var(--ink);
+        font-family:"Nunito",sans-serif;transition:transform .08s ease,border-color .08s ease;
+      }
+      .tool:hover{transform:translateY(-2px)}
+      .tool.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;background:rgba(255,107,74,.08)}
+      .tool.cant{opacity:.45}
+      .tool svg{width:40px;height:40px}
+      .tool .nm{font-family:"Fredoka",sans-serif;font-weight:600;font-size:13.5px;line-height:1.15;margin-top:2px}
+      .tool .cost{font-size:12px;font-weight:800;color:var(--teal)}
+      .tool .cost.pwr{color:var(--ink-soft);font-size:11px}
+
+      /* ---------- Toast ---------- */
+      .toast{
+        position:fixed;left:50%;bottom:22px;transform:translate(-50%,80px);z-index:50;
+        background:#123332;color:#fff;font-weight:800;font-size:14.5px;
+        padding:12px 18px;border-radius:13px;box-shadow:0 14px 30px rgba(0,0,0,.35);
+        transition:transform .25s ease;max-width:min(92vw,480px);text-align:center;
+      }
+      .toast.show{transform:translate(-50%,0)}
+      .toast.pop{background:var(--teal)}
+      .toast.err{background:var(--bad)}
+
+      details.howto{margin-top:14px;background:var(--panel);border:2px solid var(--panel-edge);
+        border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 14px}
+      details.howto summary{font-family:"Fredoka",sans-serif;font-weight:600;font-size:15.5px;cursor:pointer}
+      details.howto p,details.howto li{font-size:13.5px;font-weight:600;color:var(--ink-soft);line-height:1.5}
+      details.howto ul{margin:6px 0;padding-left:18px}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <!-- Stats -->
+      <div class="stats" role="region" aria-label="Island status">
+        <div class="stat" id="st-shells">
+          <span class="ic" aria-hidden="true">🐚</span>
+          <span><span class="lab">Shells</span><br /><span class="val" id="v-shells">0</span></span>
+        </div>
+        <div class="stat" id="st-pop">
+          <span class="ic" aria-hidden="true">🧑‍🤝‍🧑</span>
+          <span><span class="lab">Islanders</span><br /><span class="val" id="v-pop">0 <small>/ 0 beds</small></span></span>
+        </div>
+        <div class="stat" id="st-tour">
+          <span class="ic" aria-hidden="true">📸</span>
+          <span><span class="lab">Tourists</span><br /><span class="val" id="v-tour">0 <small>/ 0</small></span></span>
+        </div>
+        <div class="stat" id="st-happy">
+          <span class="ic" aria-hidden="true">💚</span>
+          <span><span class="lab">Happiness</span><br /><span class="val" id="v-happy">0%</span></span>
+        </div>
+        <div class="stat" id="st-power">
+          <span class="ic" aria-hidden="true">⚡</span>
+          <span><span class="lab">Power</span><br /><span class="val" id="v-power">0 <small>/ 0</small></span></span>
+        </div>
+        <div class="stat">
+          <span class="ic" aria-hidden="true">⭐</span>
+          <span><span class="lab">Island rating</span><br /><span class="stars" id="v-stars"></span></span>
+        </div>
+        <div class="daybox">
+          <span class="val" id="v-day">Day 1</span>
+          <div class="spd">
+            <button id="btn-pause" type="button" aria-label="Pause or resume">⏸</button>
+            <button id="btn-1x" type="button" class="on">1×</button>
+            <button id="btn-2x" type="button">2×</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="layout">
+        <div>
+          <div class="board-card">
+            <div class="board-head">
+              <h1>Isla Serena</h1>
+              <p>Tap a tool, then tap a tile to build. Sand is prime beachfront — hotels earn more there.</p>
+            </div>
+            <div class="board" id="board" role="grid" aria-label="Island map"></div>
+          </div>
+
+          <!-- Palette -->
+          <div class="palette">
+            <h2>Build</h2>
+            <div class="tools" id="tools"></div>
+          </div>
+
+          <details class="howto">
+            <summary>How to play</summary>
+            <ul>
+              <li><b>House people first:</b> huts give islanders beds. Islanders work your market and keep the island alive.</li>
+              <li><b>Power everything:</b> solar panels and wind turbines feed huts, hotels, bars and markets. Run a deficit and happiness (and income) tanks.</li>
+              <li><b>Tourists pay the bills:</b> hotels house them, beach bars and palms make them happy, a lighthouse puts your island on the map.</li>
+              <li><b>Docks need water:</b> place them on sand touching the sea for daily fishing income.</li>
+              <li><b>Watch the weather:</b> storms wreck a building now and then. Tap the rubble to repair it, or bulldoze it clear.</li>
+              <li>Every day ticks by on its own — income, upkeep, arrivals and departures all settle at sunrise.</li>
+            </ul>
+          </details>
+        </div>
+
+        <div>
+          <div class="panel">
+            <h2 id="info-title">Island overview</h2>
+            <div class="info-body" id="info-body"></div>
+            <div id="info-actions"></div>
+          </div>
+
+          <div class="panel">
+            <h2>Milestones</h2>
+            <ul class="mile" id="miles"></ul>
+          </div>
+
+          <div class="panel">
+            <h2>Island news</h2>
+            <ul class="news" id="news"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+      "use strict";
+      /* ================= Icons (hand-drawn SVG) ================= */
+      var IC = {
+        palm: '<svg viewBox="0 0 48 48"><path d="M22 44c1-8 1-16-1-24" stroke="#8a5a2b" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M21 20C15 12 7 11 3 14c6 2 11 5 14 9M21 19c-2-9-9-13-14-13 3 5 7 9 11 12M22 19c3-8 10-12 16-11-4 4-8 8-12 11M23 20c7-4 14-3 18 1-6 1-12 1-16 3M22 21c-6 1-10 5-12 10 5-3 9-6 12-8" fill="#2f9e44"/><circle cx="19" cy="23" r="3.4" fill="#7a4a21"/><circle cx="25" cy="24" r="3" fill="#96622c"/></svg>',
+        hut: '<svg viewBox="0 0 48 48"><path d="M6 26L24 10l18 16" fill="#c98a3d"/><path d="M4 27l20-18 20 18-3 3L24 15 7 30z" fill="#a96f2a"/><rect x="13" y="26" width="22" height="15" rx="2" fill="#e8b06a"/><rect x="20" y="31" width="8" height="10" rx="1.5" fill="#7a4a21"/><rect x="15" y="29" width="5" height="5" rx="1" fill="#ffe9ae"/><rect x="28" y="29" width="5" height="5" rx="1" fill="#ffe9ae"/></svg>',
+        hotel: '<svg viewBox="0 0 48 48"><rect x="13" y="10" width="22" height="32" rx="2" fill="#ff8f6b"/><rect x="13" y="10" width="22" height="6" fill="#e04e2f"/><rect x="17" y="20" width="5" height="5" fill="#fff3c4"/><rect x="26" y="20" width="5" height="5" fill="#fff3c4"/><rect x="17" y="28" width="5" height="5" fill="#fff3c4"/><rect x="26" y="28" width="5" height="5" fill="#bfeef5"/><rect x="21" y="35" width="6" height="7" fill="#7a4a21"/><path d="M24 4l1.6 3.4L39 6c-2 3-6 5-10 5h-8c-2 0-3-1-3-3 0-2 3-4 6-4z" fill="#2f9e44" opacity="0"/></svg>',
+        bar: '<svg viewBox="0 0 48 48"><path d="M24 6l14 12H10z" fill="#ff6b4a"/><path d="M24 6v14" stroke="#c7432a" stroke-width="2.4"/><path d="M14 20h20l-2 10H16z" fill="#f5a623"/><path d="M20 30h8l-1.4 10h-5.2z" fill="#59c2d6"/><path d="M27 33l5-3" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="34" cy="29" r="2.4" fill="#d64541"/></svg>',
+        dock: '<svg viewBox="0 0 48 48"><path d="M6 32h36v4H6z" fill="#a96f2a"/><path d="M10 28v10M24 28v10M38 28v10" stroke="#7a4a21" stroke-width="3.4"/><path d="M14 14l16 4-3 8H17z" fill="#fff"/><path d="M22 6v12" stroke="#7a4a21" stroke-width="2.6"/><path d="M22 7l9 6h-9z" fill="#ff6b4a"/><path d="M8 42c3-2 6-2 9 0s6 2 9 0 6-2 9 0 4 1 5 0" stroke="#59c2d6" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>',
+        solar: '<svg viewBox="0 0 48 48"><path d="M10 14h26l4 16H6z" fill="#2b6cb0"/><path d="M13 20h20M11 25h24M18 15l3 14M28 15l-2 14" stroke="#9fd8f0" stroke-width="1.8"/><path d="M23 30v8M16 42h14" stroke="#5b6b62" stroke-width="3.4" stroke-linecap="round"/><circle cx="39" cy="9" r="4.6" fill="#f5a623"/></svg>',
+        wind: '<svg viewBox="0 0 48 48"><path d="M23 20L24 44" stroke="#8a9a8f" stroke-width="3.6" stroke-linecap="round"/><path d="M24 16c-1-6 1-11 5-14 1 5-1 10-5 14zM24 16c6 1 10 5 11 10-5 0-9-3-11-10zM24 16c-6 2-11 0-14-3 4-3 10-2 14 3z" fill="#e8f4f1" stroke="#bcd4cc"/><circle cx="24" cy="16" r="2.6" fill="#0e7c7b"/></svg>',
+        market: '<svg viewBox="0 0 48 48"><path d="M10 18h28l-3-9H13z" fill="#ff6b4a"/><path d="M10 18a3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0 7 0 3.5 3.5 0 0 0 7 0" fill="#fff" opacity=".85"/><rect x="13" y="21" width="22" height="17" rx="2" fill="#e8b06a"/><rect x="20" y="27" width="8" height="11" fill="#7a4a21"/><circle cx="17" cy="25" r="2.2" fill="#d64541"/><circle cx="31" cy="25" r="2.2" fill="#2f9e44"/></svg>',
+        lighthouse: '<svg viewBox="0 0 48 48"><path d="M19 44l3-26h4l3 26z" fill="#f4f1e6"/><path d="M20.6 34h6.8l.8 6h-8.4zM21.6 25h4.8l.7 5h-6.2z" fill="#d64541"/><rect x="19" y="11" width="10" height="7" rx="1.5" fill="#ffd94d"/><path d="M17 11h14l-2-4H19z" fill="#123332"/><path d="M29 14l12-4M29 15l12 3" stroke="#ffd94d" stroke-width="2.4" stroke-linecap="round" opacity=".8"/></svg>',
+        rubble: '<svg viewBox="0 0 48 48"><path d="M8 40l8-12 7 6 6-10 11 16z" fill="#8d8d84"/><path d="M14 40l6-8 5 4" fill="#a5a59b"/><path d="M30 22l4-8M33 15l5-3" stroke="#7a4a21" stroke-width="3" stroke-linecap="round"/></svg>',
+        shovel: '<svg viewBox="0 0 48 48"><path d="M30 6l6 6-12 13-6-6z" fill="#c0c8c2"/><path d="M19 24L8 36c-2 2 2 6 4 4l12-11" fill="#f5a623"/><path d="M33 4l11 11-4 4-11-11z" fill="#d64541"/></svg>',
+        inspect: '<svg viewBox="0 0 48 48"><circle cx="21" cy="21" r="12" fill="#bfeef5" stroke="#0e7c7b" stroke-width="3.4"/><path d="M30 30l11 11" stroke="#0e7c7b" stroke-width="5" stroke-linecap="round"/></svg>'
+      };
+
+      /* ================= Building definitions ================= */
+      var DEFS = {
+        palm:      { name:"Palm Grove",  cost:15,  icon:"palm",      terrain:["grass","sand"], power:0,  upkeep:0,
+                     blurb:"Shade and coconuts. Islanders and tourists both love palms — each grove lifts happiness." },
+        hut:       { name:"Island Hut",  cost:40,  icon:"hut",       terrain:["grass","sand"], power:1,  upkeep:1, beds:5,
+                     blurb:"A home for 5 islanders. Happy, housed islanders are the engine of the island." },
+        hotel:     { name:"Hotel",       cost:150, icon:"hotel",     terrain:["grass","sand"], power:2,  upkeep:4, rooms:10,
+                     blurb:"Rooms for 10 tourists. On sand it earns a beachfront bonus — tourists pay extra for the view." },
+        bar:       { name:"Beach Bar",   cost:70,  icon:"bar",       terrain:["grass","sand"], power:1,  upkeep:2,
+                     blurb:"Smoothies, sunsets, steel drums. Steady income and happier islanders nearby." },
+        dock:      { name:"Fishing Dock",cost:90,  icon:"dock",      terrain:["sand"],         power:0,  upkeep:2, needsWater:true,
+                     blurb:"Must sit on sand touching the sea. The fleet brings in a reliable catch every day." },
+        solar:     { name:"Solar Farm",  cost:60,  icon:"solar",     terrain:["grass","sand","rock"], power:-4, upkeep:0,
+                     blurb:"Generates 4 power from all that tropical sun." },
+        wind:      { name:"Wind Turbine",cost:100, icon:"wind",      terrain:["grass","rock"], power:-7, upkeep:1,
+                     blurb:"Generates 7 power from the trade winds. Needs grass or high rocky ground." },
+        market:    { name:"Market",      cost:110, icon:"market",    terrain:["grass","sand"], power:1,  upkeep:3,
+                     blurb:"Islanders spend shells here — income grows with your population." },
+        lighthouse:{ name:"Lighthouse",  cost:200, icon:"lighthouse",terrain:["sand","rock"], power:1,  upkeep:2, needsWater:true,
+                     blurb:"Must stand by the sea. Puts Isla Serena on the map: +5 tourist spots and happier arrivals." }
+      };
+      var ORDER = ["palm","hut","solar","wind","hotel","bar","market","dock","lighthouse"];
+
+      /* ================= Island generation ================= */
+      var W = 11, H = 11;
+      var tiles = [];
+      (function gen(){
+        // deterministic-ish island: ellipse falloff + jitter
+        var seed = 7;
+        function rnd(){ seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+        for (var y = 0; y < H; y++){
+          for (var x = 0; x < W; x++){
+            var dx = (x - (W-1)/2) / ((W-1)/2), dy = (y - (H-1)/2) / ((H-1)/2);
+            var d = Math.sqrt(dx*dx + dy*dy) + (rnd() - 0.5) * 0.22;
+            var t;
+            if (d > 1.0) t = "water";
+            else if (d > 0.86) t = "sand";
+            else if (d > 0.72 && rnd() < 0.35) t = "sand";
+            else if (rnd() < 0.08) t = "rock";
+            else t = "grass";
+            tiles.push({ x:x, y:y, terrain:t, b:null, rubble:false });
+          }
+        }
+        // a few starter palms so the island reads tropical from second one
+        var land = tiles.filter(function(t){ return t.terrain === "grass" || t.terrain === "sand"; });
+        for (var i = 0; i < 5 && i < land.length; i++){
+          var pick = land[Math.floor(rnd() * land.length)];
+          if (!pick.b){ pick.b = "palm"; pick.natural = true; }
+        }
+      })();
+      function tileAt(x,y){ if (x<0||y<0||x>=W||y>=H) return null; return tiles[y*W+x]; }
+      function neighbors(t){
+        return [tileAt(t.x+1,t.y), tileAt(t.x-1,t.y), tileAt(t.x,t.y+1), tileAt(t.x,t.y-1)]
+          .filter(Boolean);
+      }
+      function touchesWater(t){ return neighbors(t).some(function(n){ return n.terrain === "water"; }); }
+
+      /* ================= State ================= */
+      var S = {
+        shells: 220, day: 1, pop: 0,
+        tool: "inspect", selected: null,
+        paused: false, speed: 1,
+        milesHit: {}, stormIn: 6 + Math.floor(Math.random()*5)
+      };
+      var newsLog = [];
+      function news(txt, cls){
+        newsLog.unshift({ day: S.day, txt: txt, cls: cls || "" });
+        if (newsLog.length > 30) newsLog.pop();
+        renderNews();
+      }
+
+      /* ================= Derived stats ================= */
+      function compute(){
+        var c = { beds:0, rooms:0, gen:0, use:0, upkeep:0, count:{}, built:0,
+                  hotelsOnSand:0, hotels:0 };
+        tiles.forEach(function(t){
+          if (!t.b || t.rubble) return;
+          var d = DEFS[t.b];
+          if (!t.natural) c.built++;
+          c.count[t.b] = (c.count[t.b]||0) + 1;
+          if (d.beds) c.beds += d.beds;
+          if (d.rooms) c.rooms += d.rooms;
+          if (d.power < 0) c.gen += -d.power; else c.use += d.power;
+          c.upkeep += d.upkeep;
+          if (t.b === "hotel"){ c.hotels++; if (t.terrain === "sand") c.hotelsOnSand++; }
+        });
+        c.rooms += (c.count.lighthouse||0) * 5;
+        c.powered = c.use <= c.gen;
+        // happiness
+        var hap = 55;
+        hap += Math.min(16, (c.count.palm||0) * 2);
+        hap += Math.min(12, (c.count.bar||0) * 4);
+        hap += (c.count.lighthouse||0) * 5;
+        if (!c.powered && c.use > 0) hap -= 14;
+        if (S.pop > c.beds) hap -= 12;
+        if (c.beds > 0 && S.pop === 0) hap -= 4;
+        c.happiness = Math.max(5, Math.min(100, Math.round(hap)));
+        // tourists actually visiting
+        var fill = Math.max(0.1, Math.min(1, c.happiness / 100));
+        c.tourists = Math.round(c.rooms * fill);
+        // daily income breakdown
+        var inc = { hotel:0, dock:0, bar:0, market:0 };
+        if (c.hotels > 0){
+          var perRoom = c.tourists / Math.max(1, c.rooms); // occupancy of paid rooms
+          inc.hotel = Math.round(c.tourists * 2 * (c.hotels ? (1 + 0.5 * (c.hotelsOnSand / c.hotels)) : 1) * (perRoom > 0 ? 1 : 0));
+        }
+        inc.dock = (c.count.dock||0) * 8;
+        inc.bar = (c.count.bar||0) * 5;
+        inc.market = Math.round(S.pop * 0.25) * (c.count.market||0);
+        if (!c.powered && c.use > 0){ inc.hotel = Math.floor(inc.hotel/2); inc.bar = Math.floor(inc.bar/2); inc.market = Math.floor(inc.market/2); }
+        c.income = inc.hotel + inc.dock + inc.bar + inc.market;
+        c.net = c.income - c.upkeep;
+        c.inc = inc;
+        // rating
+        var score = S.pop * 1 + c.tourists * 1.5 + c.happiness * 0.6 + c.built * 2;
+        c.stars = score >= 260 ? 5 : score >= 185 ? 4 : score >= 120 ? 3 : score >= 65 ? 2 : score >= 25 ? 1 : 0;
+        return c;
+      }
+
+      var MILES = [
+        { id:"first",  label:"First steps — build 5 things",        test:function(c){ return c.built >= 5; } },
+        { id:"village",label:"Village — 25 islanders call it home", test:function(c){ return S.pop >= 25; } },
+        { id:"power",  label:"Fully powered — no power deficit",    test:function(c){ return c.use > 0 && c.powered; } },
+        { id:"resort", label:"Resort buzz — 30 tourists visiting",  test:function(c){ return c.tourists >= 30; } },
+        { id:"town",   label:"Island town — 60 islanders",          test:function(c){ return S.pop >= 60; } },
+        { id:"paradise",label:"Paradise — earn a 5-star rating",    test:function(c){ return c.stars >= 5; } }
+      ];
+
+      /* ================= Audio (tiny blips) ================= */
+      var AC = null;
+      function blip(freq, dur, type){
+        try{
+          if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+          if (AC.state === "suspended") AC.resume();
+          var o = AC.createOscillator(), g = AC.createGain();
+          o.type = type || "sine"; o.frequency.value = freq;
+          g.gain.setValueAtTime(0.08, AC.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + (dur || 0.12));
+          o.connect(g); g.connect(AC.destination);
+          o.start(); o.stop(AC.currentTime + (dur || 0.12));
+        }catch(e){}
+      }
+
+      /* ================= Toast ================= */
+      var toastEl = document.getElementById("toast"), toastT = null;
+      function toast(msg, cls){
+        toastEl.textContent = msg;
+        toastEl.className = "toast show " + (cls || "");
+        clearTimeout(toastT);
+        toastT = setTimeout(function(){ toastEl.className = "toast " + (cls || ""); }, 2600);
+      }
+
+      /* ================= Rendering ================= */
+      var boardEl = document.getElementById("board");
+      boardEl.innerHTML = tiles.map(function(t, i){
+        return '<div class="tile" data-i="' + i + '" role="gridcell"></div>';
+      }).join("");
+      var tileEls = boardEl.children;
+
+      function render(){
+        var c = compute();
+        for (var i = 0; i < tiles.length; i++){
+          var t = tiles[i], el = tileEls[i];
+          var cls = "tile " + t.terrain;
+          if (t.terrain !== "water") cls += " buildable";
+          if (t.rubble) cls += " rubble";
+          if (S.selected === t) cls += " selected";
+          el.className = cls;
+          var inner = "";
+          if (t.rubble) inner = IC.rubble + '<span class="badge">wrecked</span>';
+          else if (t.b) inner = IC[DEFS[t.b].icon];
+          if (el._h !== inner) { el.innerHTML = inner; el._h = inner; }
+          el.title = tileTitle(t);
+        }
+        document.getElementById("v-shells").textContent = Math.floor(S.shells);
+        document.getElementById("v-pop").innerHTML = S.pop + " <small>/ " + c.beds + " beds</small>";
+        document.getElementById("v-tour").innerHTML = c.tourists + " <small>/ " + c.rooms + " spots</small>";
+        document.getElementById("v-happy").textContent = c.happiness + "%";
+        document.getElementById("v-power").innerHTML = c.gen + " <small>made /</small> " + c.use + " <small>used</small>";
+        document.getElementById("st-power").classList.toggle("warn", !c.powered && c.use > 0);
+        document.getElementById("st-happy").classList.toggle("warn", c.happiness < 40);
+        document.getElementById("v-day").textContent = "Day " + S.day;
+        var st = "";
+        for (var s = 0; s < 5; s++) st += '<span class="' + (s < c.stars ? "" : "off") + '">★</span>';
+        document.getElementById("v-stars").innerHTML = st;
+        renderTools(c);
+        renderMiles(c);
+        renderInfo(c);
+        checkMiles(c);
+      }
+      function tileTitle(t){
+        if (t.terrain === "water") return "Open sea";
+        var base = t.terrain[0].toUpperCase() + t.terrain.slice(1);
+        if (t.rubble) return base + " — wrecked building (tap to inspect)";
+        if (t.b) return base + " — " + DEFS[t.b].name;
+        return base + " — empty";
+      }
+
+      /* tools */
+      var toolsEl = document.getElementById("tools");
+      var TOOL_LIST = [{ id:"inspect", name:"Inspect", icon:"inspect", cost:null }]
+        .concat(ORDER.map(function(id){ return { id:id, name:DEFS[id].name, icon:DEFS[id].icon, cost:DEFS[id].cost, power:DEFS[id].power }; }))
+        .concat([{ id:"bulldoze", name:"Bulldoze", icon:"shovel", cost:5 }]);
+      toolsEl.innerHTML = TOOL_LIST.map(function(t){
+        return '<button type="button" class="tool" data-tool="' + t.id + '">' +
+          IC[t.icon] +
+          '<div class="nm">' + t.name + '</div>' +
+          (t.cost === null ? '<div class="cost pwr">look around</div>'
+            : '<div class="cost">🐚 ' + t.cost + '</div>' +
+              (t.power ? '<div class="cost pwr">' + (t.power < 0 ? "+" + (-t.power) + " power" : "uses " + t.power + " power") + '</div>' : '<div class="cost pwr">no power</div>')) +
+          '</button>';
+      }).join("");
+      function renderTools(c){
+        Array.prototype.forEach.call(toolsEl.children, function(btn){
+          var id = btn.getAttribute("data-tool");
+          btn.classList.toggle("on", S.tool === id);
+          var def = DEFS[id];
+          btn.classList.toggle("cant", !!def && S.shells < def.cost);
+        });
+      }
+      toolsEl.addEventListener("click", function(e){
+        var btn = e.target.closest(".tool"); if (!btn) return;
+        S.tool = btn.getAttribute("data-tool");
+        blip(660, 0.06, "triangle");
+        render();
+      });
+
+      /* milestones */
+      function renderMiles(c){
+        document.getElementById("miles").innerHTML = MILES.map(function(m){
+          var done = m.test(c);
+          return '<li class="' + (done ? "done" : "") + '"><span class="box">' + (done ? "✓" : "") + '</span><span>' + m.label + '</span></li>';
+        }).join("");
+      }
+      function checkMiles(c){
+        MILES.forEach(function(m){
+          if (!S.milesHit[m.id] && m.test(c)){
+            S.milesHit[m.id] = true;
+            toast("Milestone reached: " + m.label, "pop");
+            news("<b>Milestone!</b> " + m.label + ".", "good");
+            blip(880, 0.18, "sine"); setTimeout(function(){ blip(1174, 0.22, "sine"); }, 120);
+          }
+        });
+      }
+
+      /* news */
+      function renderNews(){
+        document.getElementById("news").innerHTML = newsLog.map(function(n){
+          return '<li class="' + n.cls + '"><span class="d">Day ' + n.day + '</span> — ' + n.txt + '</li>';
+        }).join("") || '<li>No news yet — the island is quiet.</li>';
+      }
+
+      /* info panel */
+      function renderInfo(c){
+        var title = document.getElementById("info-title");
+        var body = document.getElementById("info-body");
+        var acts = document.getElementById("info-actions");
+        acts.innerHTML = "";
+        var t = S.selected;
+        if (!t){
+          title.textContent = "Island overview";
+          body.innerHTML =
+            '<span class="big">' + (c.net >= 0 ? "+" : "") + c.net + " 🐚 / day</span><br>" +
+            "Income: hotels " + c.inc.hotel + " · docks " + c.inc.dock + " · bars " + c.inc.bar + " · market " + c.inc.market + "<br>" +
+            "Upkeep: −" + c.upkeep + " 🐚/day<br>" +
+            (c.powered ? "Power grid is balanced. " : "<b>Power deficit!</b> Buildings are struggling — add solar or wind. ") +
+            (S.pop < c.beds ? "There are empty beds — happy islanders will move in at sunrise." :
+             S.pop >= c.beds && c.beds > 0 ? "Every bed is full. Build more huts to grow." :
+             "No housing yet — build an Island Hut to welcome your first islanders.");
+          return;
+        }
+        var terrName = t.terrain[0].toUpperCase() + t.terrain.slice(1);
+        if (t.terrain === "water"){ title.textContent = "Open sea"; body.innerHTML = "Warm, clear, and full of fish. Docks and lighthouses go on the shore beside it."; return; }
+        if (t.rubble){
+          title.textContent = "Wrecked building";
+          var orig = DEFS[t.b];
+          var repair = Math.ceil(orig.cost / 2);
+          body.innerHTML = "A storm-battered <b>" + orig.name + "</b> on " + terrName.toLowerCase() + ". It earns nothing until it's fixed.";
+          acts.innerHTML =
+            '<button type="button" class="repair-btn" id="btn-repair">Repair for 🐚 ' + repair + '</button>' +
+            '<button type="button" class="clear-btn" id="btn-clear">Clear rubble (free)</button>';
+          document.getElementById("btn-repair").addEventListener("click", function(){
+            if (S.shells < repair){ toast("Not enough shells to repair.", "err"); return; }
+            S.shells -= repair; t.rubble = false;
+            news("The <b>" + orig.name + "</b> was repaired and is back in business.", "good");
+            blip(740, 0.1, "triangle"); render();
+          });
+          document.getElementById("btn-clear").addEventListener("click", function(){
+            t.b = null; t.rubble = false; news("Cleared a pile of storm rubble.", "");
+            render();
+          });
+          return;
+        }
+        if (t.b){
+          var d = DEFS[t.b];
+          title.textContent = d.name;
+          body.innerHTML = d.blurb + "<br><br>Built on: <b>" + terrName + "</b>" +
+            (t.b === "hotel" ? (t.terrain === "sand" ? "<br><b>Beachfront bonus active</b> — guests pay 50% more." : "<br>Build on sand next time for the beachfront bonus.") : "") +
+            (d.upkeep ? "<br>Upkeep: −" + d.upkeep + " 🐚/day" : "");
+          acts.innerHTML = '<button type="button" class="clear-btn" id="btn-demo">Bulldoze (🐚 5)</button>';
+          document.getElementById("btn-demo").addEventListener("click", function(){ bulldoze(t); });
+          return;
+        }
+        title.textContent = terrName + " — empty";
+        body.innerHTML = "Nothing here yet. Pick a building below and tap this tile to start construction." +
+          (t.terrain === "sand" && touchesWater(t) ? "<br><b>Shoreline sand</b> — perfect for a Fishing Dock or Lighthouse." : "") +
+          (t.terrain === "rock" ? "<br>Rocky ground suits solar farms, wind turbines and the lighthouse." : "");
+      }
+      function bulldoze(t){
+        if (S.shells < 5){ toast("Bulldozing costs 5 shells.", "err"); return; }
+        S.shells -= 5;
+        news("Bulldozed the <b>" + DEFS[t.b].name + "</b>.", "");
+        t.b = null; t.rubble = false;
+        blip(180, 0.15, "sawtooth"); render();
+      }
+
+      /* ================= Building placement ================= */
+      boardEl.addEventListener("click", function(e){
+        var el = e.target.closest(".tile"); if (!el) return;
+        var t = tiles[Number(el.getAttribute("data-i"))];
+        S.selected = t;
+        if (S.tool === "inspect" || t.terrain === "water"){ render(); return; }
+        if (S.tool === "bulldoze"){
+          if (t.rubble){ t.b = null; t.rubble = false; news("Cleared a pile of storm rubble.", ""); blip(200,0.12,"sawtooth"); }
+          else if (t.b){ bulldoze(t); return; }
+          render(); return;
+        }
+        var def = DEFS[S.tool];
+        if (t.b || t.rubble){ toast(t.rubble ? "That tile is wreckage — inspect it to repair or clear it." : "Already occupied by a " + DEFS[t.b].name + ".", "err"); render(); return; }
+        if (def.terrain.indexOf(t.terrain) === -1){ toast(def.name + " can't go on " + t.terrain + ".", "err"); render(); return; }
+        if (def.needsWater && !touchesWater(t)){ toast(def.name + " needs to touch the sea.", "err"); render(); return; }
+        if (S.shells < def.cost){ toast("Not enough shells — a " + def.name + " costs " + def.cost + ".", "err"); render(); return; }
+        S.shells -= def.cost;
+        t.b = S.tool;
+        blip(520, 0.09, "triangle"); setTimeout(function(){ blip(780, 0.1, "triangle"); }, 70);
+        render();
+      });
+
+      /* ================= Day cycle ================= */
+      function tickDay(){
+        var c = compute();
+        S.day++;
+        // economy
+        S.shells = Math.max(0, S.shells + c.net);
+        if (c.net < 0 && S.shells === 0 && c.upkeep > 0)
+          news("The treasury is empty and upkeep went unpaid. Islanders grumble.", "bad");
+        // population drift
+        if (c.happiness >= 55 && S.pop < c.beds){
+          var join = Math.min(c.beds - S.pop, 1 + Math.floor(Math.random() * 3) + (c.happiness > 80 ? 1 : 0));
+          S.pop += join;
+          if (join > 0) news(join + " new islander" + (join > 1 ? "s" : "") + " moved in. The island feels alive.", "good");
+        } else if (c.happiness < 35 && S.pop > 0){
+          var leave = Math.min(S.pop, 1 + Math.floor(Math.random() * 2));
+          S.pop -= leave;
+          news(leave + " islander" + (leave > 1 ? "s" : "") + " packed up and left — happiness is too low.", "bad");
+        }
+        // events
+        S.stormIn--;
+        if (S.stormIn <= 0){
+          S.stormIn = 7 + Math.floor(Math.random() * 6);
+          storm();
+        } else if (Math.random() < 0.16){
+          festival(c);
+        } else if (Math.random() < 0.12){
+          cruise(c);
+        }
+        render();
+      }
+      function storm(){
+        var standing = tiles.filter(function(t){ return t.b && !t.rubble && t.b !== "palm"; });
+        if (!standing.length){ news("A tropical storm rolled through, but there was nothing to wreck yet.", ""); return; }
+        var victim = standing[Math.floor(Math.random() * standing.length)];
+        victim.rubble = true;
+        news("<b>Storm damage!</b> A squall wrecked the " + DEFS[victim.b].name + ". Tap it to repair or clear it.", "bad");
+        toast("⛈ Storm! Your " + DEFS[victim.b].name + " was wrecked.", "err");
+        blip(140, 0.3, "sawtooth");
+      }
+      function festival(c){
+        var palms = c.count.palm || 0;
+        if (palms < 2) return;
+        var gain = palms * 3;
+        S.shells += gain;
+        news("<b>Coconut festival!</b> The harvest brought in " + gain + " shells.", "good");
+      }
+      function cruise(c){
+        if (c.rooms <= 0) return;
+        var gain = 20 + c.tourists * 2;
+        S.shells += gain;
+        news("<b>Cruise ship day!</b> Day-trippers splashed out " + gain + " shells around the island.", "good");
+      }
+
+      /* speed controls */
+      var timer = null;
+      function armTimer(){
+        clearInterval(timer);
+        if (S.paused) return;
+        timer = setInterval(tickDay, Math.round(2400 / S.speed));
+      }
+      document.getElementById("btn-pause").addEventListener("click", function(){
+        S.paused = !S.paused;
+        this.textContent = S.paused ? "▶" : "⏸";
+        armTimer();
+      });
+      document.getElementById("btn-1x").addEventListener("click", function(){ setSpeed(1); });
+      document.getElementById("btn-2x").addEventListener("click", function(){ setSpeed(2); });
+      function setSpeed(n){
+        S.speed = n; S.paused = false;
+        document.getElementById("btn-pause").textContent = "⏸";
+        document.getElementById("btn-1x").classList.toggle("on", n === 1);
+        document.getElementById("btn-2x").classList.toggle("on", n === 2);
+        armTimer();
+      }
+
+      /* ================= Go ================= */
+      news("Welcome to <b>Isla Serena</b>! Start with a hut and a solar farm — islanders need beds and power.", "good");
+      render();
+      armTimer();
+    </script>
+  </body>
+</html>
