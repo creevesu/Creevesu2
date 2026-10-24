@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Mail Truck Flip</title>
+    <style>
+      :root {
+        --ink: #1c2733;
+        --paper: #fffdf6;
+        --accent: #d0342c;
+        --accent2: #1d4e9e;
+        --sun: #f5b301;
+        --panel: rgba(255, 253, 246, 0.92);
+        --panel-line: #1c2733;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #f2ead8;
+          --paper: #141a22;
+          --panel: rgba(20, 26, 34, 0.92);
+          --panel-line: #f2ead8;
+        }
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+        overflow: hidden;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #stage {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        flex: 0 0 auto;
+        flex-wrap: wrap;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(18px, 4.5vw, 28px);
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
+      h1 .flip { color: var(--accent); display: inline-block; transform: rotate(-4deg); }
+      .stats {
+        margin-left: auto;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .stat {
+        background: var(--panel);
+        border: 2px solid var(--panel-line);
+        border-radius: 10px;
+        padding: 4px 10px;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .stat b { font-size: 16px; }
+      #wrap {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        cursor: grab;
+      }
+      canvas:active { cursor: grabbing; }
+      #banner {
+        position: absolute;
+        left: 50%;
+        top: 14%;
+        transform: translateX(-50%) rotate(-3deg);
+        font-size: clamp(26px, 7vw, 54px);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--accent);
+        text-shadow: 2px 3px 0 var(--paper), -1px -1px 0 var(--paper);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        text-align: center;
+        white-space: nowrap;
+      }
+      #banner.show { opacity: 1; }
+      #hint {
+        position: absolute;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        background: var(--panel);
+        border: 2px solid var(--panel-line);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 13px;
+        font-weight: 700;
+        pointer-events: none;
+        white-space: nowrap;
+        max-width: 94vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      footer {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 8px;
+        padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button {
+        font: inherit;
+        font-weight: 800;
+        font-size: 15px;
+        border: 2px solid var(--panel-line);
+        border-radius: 10px;
+        padding: 10px 18px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        box-shadow: 0 3px 0 var(--panel-line);
+      }
+      button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--panel-line); }
+      button.secondary { background: var(--panel); color: var(--ink); }
+      .meter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        flex: 1 1 auto;
+        min-width: 140px;
+      }
+      .meterbar {
+        flex: 1;
+        height: 14px;
+        border: 2px solid var(--panel-line);
+        border-radius: 999px;
+        overflow: hidden;
+        background: var(--panel);
+      }
+      .meterfill {
+        height: 100%;
+        width: 0%;
+        background: repeating-linear-gradient(45deg, var(--sun) 0 10px, var(--accent) 10px 20px);
+        transition: width 0.05s linear;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <header>
+        <h1>📬 Mail Truck <span class="flip">Flip!</span></h1>
+        <div class="stats">
+          <div class="stat">Flips <b id="statFlips">0</b></div>
+          <div class="stat">Distance <b id="statDist">0 ft</b></div>
+          <div class="stat">Best <b id="statBest">0 flips</b></div>
+          <div class="stat">Score <b id="statScore">0</b></div>
+        </div>
+      </header>
+      <div id="wrap">
+        <canvas id="game"></canvas>
+        <div id="banner"></div>
+        <div id="hint">Drag back on the truck to aim… let go to LAUNCH! 🚀</div>
+      </div>
+      <footer>
+        <button id="btnReset" type="button">↩ New Truck</button>
+        <button id="btnHonk" type="button" class="secondary">📯 Honk</button>
+        <div class="meter"><span>Power</span><div class="meterbar"><div class="meterfill" id="powerFill"></div></div></div>
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+        var canvas = document.getElementById("game");
+        var ctx = canvas.getContext("2d");
+        var wrap = document.getElementById("wrap");
+        var banner = document.getElementById("banner");
+        var hint = document.getElementById("hint");
+        var powerFill = document.getElementById("powerFill");
+        var statFlips = document.getElementById("statFlips");
+        var statDist = document.getElementById("statDist");
+        var statBest = document.getElementById("statBest");
+        var statScore = document.getElementById("statScore");
+
+        var W = 0, H = 0, DPR = 1;
+        function resize() {
+          DPR = Math.min(window.devicePixelRatio || 1, 2);
+          W = wrap.clientWidth;
+          H = wrap.clientHeight;
+          canvas.width = Math.round(W * DPR);
+          canvas.height = Math.round(H * DPR);
+          ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+          groundY = H - Math.max(46, H * 0.12);
+          if (state === "ready") placeTruck();
+        }
+
+        // ---- world constants ----
+        var GRAV = 1500;         // px/s^2
+        var TRUCK_W = 92, TRUCK_H = 52;
+        var groundY = 300;
+        var LAUNCH_X = 110;
+
+        // ---- state ----
+        var state = "ready"; // ready | aiming | flying | crashed
+        var truck = null;
+        var cameraX = 0;
+        var dragStart = null, dragNow = null;
+        var packages = [];
+        var clouds = [];
+        var confetti = [];
+        var totalRotation = 0;
+        var flips = 0;
+        var bestFlips = 0;
+        var score = 0;
+        var startX = 0;
+        var airTime = 0;
+        var bounceCount = 0;
+        var landed = false;
+        var bannerTimer = 0;
+        var shake = 0;
+
+        function placeTruck() {
+          truck = {
+            x: LAUNCH_X, y: groundY - TRUCK_H / 2 - 2,
+            vx: 0, vy: 0, angle: 0, va: 0
+          };
+          cameraX = 0;
+          startX = truck.x;
+          totalRotation = 0; flips = 0; airTime = 0; bounceCount = 0; landed = false;
+          packages = [];
+          updateStats();
+        }
+
+        function seedClouds() {
+          clouds = [];
+          for (var i = 0; i < 14; i++) {
+            clouds.push({
+              x: Math.random() * 2400,
+              y: 20 + Math.random() * 120,
+              s: 0.6 + Math.random() * 0.9
+            });
+          }
+        }
+
+        // ---- audio (tiny synth, no assets) ----
+        var audioCtx = null;
+        function ac() {
+          if (!audioCtx) {
+            try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; }
+          }
+          if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+          return audioCtx;
+        }
+        function beep(freq, dur, type, vol, slide) {
+          var a = ac(); if (!a) return;
+          var o = a.createOscillator(), g = a.createGain();
+          o.type = type || "square";
+          o.frequency.setValueAtTime(freq, a.currentTime);
+          if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), a.currentTime + dur);
+          g.gain.setValueAtTime(vol || 0.12, a.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+          o.connect(g); g.connect(a.destination);
+          o.start(); o.stop(a.currentTime + dur);
+        }
+        function honk() {
+          beep(392, 0.16, "square", 0.14);
+          setTimeout(function () { beep(392, 0.22, "square", 0.14); }, 130);
+        }
+        function boing(power) {
+          beep(160 + power * 2, 0.35, "sine", 0.2, 500);
+        }
+        function thud() { beep(90, 0.18, "triangle", 0.25, -40); }
+        function cheer() {
+          var notes = [523, 659, 784, 1047];
+          notes.forEach(function (n, i) { setTimeout(function () { beep(n, 0.16, "square", 0.1); }, i * 90); });
+        }
+
+        // ---- input ----
+        function pointerPos(e) {
+          var r = canvas.getBoundingClientRect();
+          return { x: e.clientX - r.left, y: e.clientY - r.top };
+        }
+        canvas.addEventListener("pointerdown", function (e) {
+          ac();
+          if (state === "ready") {
+            dragStart = pointerPos(e);
+            dragNow = dragStart;
+            state = "aiming";
+            canvas.setPointerCapture(e.pointerId);
+          } else if (state === "crashed") {
+            placeTruck(); state = "ready";
+            hint.textContent = "Drag back on the truck to aim… let go to LAUNCH! 🚀";
+          }
+        });
+        canvas.addEventListener("pointermove", function (e) {
+          if (state === "aiming") dragNow = pointerPos(e);
+        });
+        canvas.addEventListener("pointerup", function (e) {
+          if (state !== "aiming") return;
+          var dx = dragStart.x - dragNow.x;
+          var dy = dragStart.y - dragNow.y;
+          var dist = Math.hypot(dx, dy);
+          if (dist < 24) { state = "ready"; powerFill.style.width = "0%"; dragStart = dragNow = null; return; }
+          var maxPull = 260;
+          var power = Math.min(dist, maxPull) / maxPull; // 0..1
+          var speed = 620 + power * 980;
+          var ang = Math.atan2(dy, dx);
+          // clamp launch angle to a fun arc: -80°..+15° relative
+          ang = Math.max(-1.45, Math.min(0.35, ang));
+          truck.vx = Math.cos(ang) * speed;
+          truck.vy = Math.sin(ang) * speed;
+          // backspin scales with upward pull: more pull up = more flips!
+          truck.va = -(4 + power * 13) * (dy > -10 ? 0.45 : 1);
+          startX = truck.x;
+          state = "flying";
+          boing(power * 100);
+          spawnPackages(4 + Math.round(power * 6));
+          hint.textContent = "WHEEE! Count those flips! 🤸";
+          powerFill.style.width = "0%";
+          dragStart = dragNow = null;
+        });
+        canvas.addEventListener("pointercancel", function () {
+          if (state === "aiming") { state = "ready"; powerFill.style.width = "0%"; dragStart = dragNow = null; }
+        });
+
+        document.getElementById("btnReset").addEventListener("click", function () {
+          placeTruck(); state = "ready";
+          hideBanner();
+          hint.textContent = "Drag back on the truck to aim… let go to LAUNCH! 🚀";
+        });
+        document.getElementById("btnHonk").addEventListener("click", honk);
+
+        function spawnPackages(n) {
+          for (var i = 0; i < n; i++) {
+            packages.push({
+              x: truck.x + (Math.random() - 0.5) * 30,
+              y: truck.y - 20,
+              vx: truck.vx * (0.55 + Math.random() * 0.4) + (Math.random() - 0.5) * 160,
+              vy: truck.vy * 0.6 - Math.random() * 220,
+              angle: Math.random() * 6.28,
+              va: (Math.random() - 0.5) * 12,
+              size: 12 + Math.random() * 12,
+              hue: ["#c98d4b", "#e0e0e0", "#f5b301", "#d0342c"][i % 4]
+            });
+          }
+        }
+        function burstConfetti(x, y) {
+          var colors = ["#d0342c", "#1d4e9e", "#f5b301", "#2e9e4f", "#ffffff"];
+          for (var i = 0; i < 46; i++) {
+            confetti.push({
+              x: x, y: y,
+              vx: (Math.random() - 0.5) * 520,
+              vy: -Math.random() * 520 - 80,
+              angle: Math.random() * 6.28,
+              va: (Math.random() - 0.5) * 14,
+              size: 4 + Math.random() * 6,
+              color: colors[i % colors.length],
+              life: 1.4 + Math.random() * 0.8
+            });
+          }
+        }
+
+        function showBanner(text, ms) {
+          banner.textContent = text;
+          banner.classList.add("show");
+          bannerTimer = (ms || 1600) / 1000;
+        }
+        function hideBanner() { banner.classList.remove("show"); bannerTimer = 0; }
+
+        function updateStats() {
+          var distFt = Math.max(0, Math.round((truck.x - startX) / 9));
+          statFlips.textContent = flips;
+          statDist.textContent = distFt + " ft";
+          statBest.textContent = bestFlips + (bestFlips === 1 ? " flip" : " flips");
+          score = flips * 500 + distFt * 2 + Math.round(airTime * 25);
+          statScore.textContent = score;
+        }
+
+        // ---- physics ----
+        function step(dt) {
+          if (bannerTimer > 0) { bannerTimer -= dt; if (bannerTimer <= 0) hideBanner(); }
+          if (shake > 0) shake = Math.max(0, shake - dt * 2.2);
+
+          // confetti always animates
+          for (var i = confetti.length - 1; i >= 0; i--) {
+            var c = confetti[i];
+            c.vy += GRAV * 0.55 * dt;
+            c.x += c.vx * dt; c.y += c.vy * dt; c.angle += c.va * dt; c.life -= dt;
+            if (c.life <= 0 || c.y > H + 30) confetti.splice(i, 1);
+          }
+
+          if (state !== "flying") return;
+
+          airTime += dt;
+          truck.vy += GRAV * dt;
+          truck.x += truck.vx * dt;
+          truck.y += truck.vy * dt;
+          var prevAngle = truck.angle;
+          truck.angle += truck.va * dt;
+          totalRotation += Math.abs(truck.angle - prevAngle);
+          var newFlips = Math.floor(totalRotation / (Math.PI * 2));
+          if (newFlips > flips) {
+            flips = newFlips;
+            if (flips >= 1) { showBanner(flips + (flips === 1 ? " FLIP!" : " FLIPS!") + " 🤸", 900); beep(600 + flips * 90, 0.12, "square", 0.1); }
+          }
+
+          // packages ride along
+          for (var j = packages.length - 1; j >= 0; j--) {
+            var p = packages[j];
+            p.vy += GRAV * dt;
+            p.x += p.vx * dt; p.y += p.vy * dt; p.angle += p.va * dt;
+            if (p.y > groundY - p.size / 2) {
+              p.y = groundY - p.size / 2;
+              p.vy *= -0.35; p.vx *= 0.7; p.va *= 0.5;
+              if (Math.abs(p.vy) < 40) p.vy = 0;
+            }
+            if (p.x < cameraX - 200) packages.splice(j, 1);
+          }
+
+          // ground contact
+          var floorY = groundY - TRUCK_H / 2;
+          if (truck.y >= floorY) {
+            truck.y = floorY;
+            var impact = truck.vy;
+            // normalize angle to -PI..PI to judge landing
+            var norm = Math.atan2(Math.sin(truck.angle), Math.cos(truck.angle));
+            var upright = Math.abs(norm) < 0.6;
+            if (impact > 260 && bounceCount < 2 && !upright) {
+              // bounce & keep tumbling — the fun part
+              truck.vy = -impact * 0.45;
+              truck.vx *= 0.82;
+              truck.va *= 0.85;
+              bounceCount++;
+              thud(); shake = 0.5;
+              spawnPackages(2);
+            } else if (truck.vx > 130 && upright) {
+              // landed on wheels: roll to a stop
+              truck.vy = 0;
+              truck.va = 0;
+              truck.angle += (0 - norm) * Math.min(1, dt * 10);
+              truck.vx = Math.max(0, truck.vx - 620 * dt);
+              if (truck.vx <= 1) { finishRun(true); }
+            } else if (truck.vx > 130 && !upright) {
+              // skidding on roof/side: grind to a halt
+              truck.vy = 0;
+              truck.va *= 0.9;
+              truck.vx = Math.max(0, truck.vx - 480 * dt);
+              shake = Math.max(shake, 0.18);
+              if (truck.vx <= 1) { finishRun(upright); }
+            } else {
+              finishRun(upright);
+            }
+          }
+          // camera follows
+          var targetCam = Math.max(0, truck.x - W * 0.32);
+          cameraX += (targetCam - cameraX) * Math.min(1, dt * 6);
+          updateStats();
+        }
+
+        function finishRun(upright) {
+          if (landed) return;
+          landed = true;
+          state = "crashed";
+          truck.vx = 0; truck.vy = 0; truck.va = 0;
+          if (flips > bestFlips) bestFlips = flips;
+          var distFt = Math.max(0, Math.round((truck.x - startX) / 9));
+          if (upright && flips >= 1) {
+            showBanner("STUCK THE LANDING! 🎉", 2400);
+            burstConfetti(truck.x - cameraX, truck.y - 50);
+            cheer();
+            hint.textContent = "Nailed it! " + flips + " flips, " + distFt + " ft. Tap anywhere for a fresh truck.";
+          } else if (flips >= 3) {
+            showBanner("TOTAL YARD SALE! 📦💥", 2400);
+            burstConfetti(truck.x - cameraX, truck.y - 40);
+            thud();
+            hint.textContent = flips + " flips and a glorious wreck. Tap anywhere to go again!";
+          } else if (flips >= 1) {
+            showBanner("CRASH LANDING! 💥", 2200);
+            thud(); shake = 0.8;
+            hint.textContent = flips + " flip" + (flips === 1 ? "" : "s") + ", " + distFt + " ft. Tap anywhere to go again!";
+          } else {
+            showBanner("NO FLIPS?! 😱", 2000);
+            thud(); shake = 0.6;
+            hint.textContent = "Zero flips — pull back FARTHER and aim UP! Tap anywhere to retry.";
+          }
+          updateStats();
+        }
+
+        // ---- drawing ----
+        function drawTruck(x, y, angle) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          // body: classic step-van mail truck
+          ctx.fillStyle = "#ffffff";
+          ctx.strokeStyle = "#1c2733";
+          ctx.lineWidth = 2.5;
+          roundRect(-TRUCK_W / 2, -TRUCK_H / 2, TRUCK_W, TRUCK_H - 12, 6);
+          ctx.fill(); ctx.stroke();
+          // cab nose
+          ctx.fillStyle = "#ffffff";
+          roundRect(TRUCK_W / 2 - 16, -TRUCK_H / 2 + 12, 16, TRUCK_H - 24, 4);
+          ctx.fill(); ctx.stroke();
+          // windshield
+          ctx.fillStyle = "#9fd8ef";
+          roundRect(TRUCK_W / 2 - 15, -TRUCK_H / 2 + 14, 9, 16, 2);
+          ctx.fill(); ctx.stroke();
+          // blue stripe + red stripe (postal vibes)
+          ctx.fillStyle = "#1d4e9e";
+          ctx.fillRect(-TRUCK_W / 2 + 2, -6, TRUCK_W - 20, 7);
+          ctx.fillStyle = "#d0342c";
+          ctx.fillRect(-TRUCK_W / 2 + 2, 2, TRUCK_W - 20, 4);
+          // eagle-ish mail badge: envelope
+          ctx.fillStyle = "#f5b301";
+          ctx.strokeStyle = "#1c2733";
+          ctx.lineWidth = 1.6;
+          roundRect(-30, -22, 26, 16, 2);
+          ctx.fill(); ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(-30, -22); ctx.lineTo(-17, -13); ctx.lineTo(-4, -22);
+          ctx.stroke();
+          // "MAIL" text
+          ctx.fillStyle = dark ? "#1c2733" : "#1c2733";
+          ctx.font = "900 13px Trebuchet MS, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("MAIL", 8, 22);
+          // wheels
+          wheel(-TRUCK_W / 2 + 16, TRUCK_H / 2 - 8);
+          wheel(TRUCK_W / 2 - 14, TRUCK_H / 2 - 8);
+          ctx.restore();
+        }
+        function wheel(x, y) {
+          ctx.fillStyle = "#22262b";
+          ctx.strokeStyle = "#1c2733";
+          ctx.beginPath(); ctx.arc(x, y, 10, 0, 6.29); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "#cfd6dd";
+          ctx.beginPath(); ctx.arc(x, y, 4.5, 0, 6.29); ctx.fill();
+        }
+        function roundRect(x, y, w, h, r) {
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.arcTo(x + w, y, x + w, y + h, r);
+          ctx.arcTo(x + w, y + h, x, y + h, r);
+          ctx.arcTo(x, y + h, x, y, r);
+          ctx.arcTo(x, y, x + w, y, r);
+          ctx.closePath();
+        }
+
+        function draw() {
+          var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          ctx.clearRect(0, 0, W, H);
+          var sx = shake > 0 ? (Math.random() - 0.5) * shake * 14 : 0;
+          var sy = shake > 0 ? (Math.random() - 0.5) * shake * 10 : 0;
+          ctx.save();
+          ctx.translate(sx, sy);
+
+          // sky
+          var sky = ctx.createLinearGradient(0, 0, 0, groundY);
+          if (dark) { sky.addColorStop(0, "#1b2a44"); sky.addColorStop(1, "#33507e"); }
+          else { sky.addColorStop(0, "#8ec9ee"); sky.addColorStop(1, "#dff2fd"); }
+          ctx.fillStyle = sky;
+          ctx.fillRect(-20, -20, W + 40, groundY + 20);
+
+          // sun / moon
+          ctx.fillStyle = dark ? "#e8e4d0" : "#ffd83d";
+          ctx.beginPath(); ctx.arc(W - 70, 56, 26, 0, 6.29); ctx.fill();
+          if (!dark) {
+            ctx.strokeStyle = "rgba(245,179,1,0.55)"; ctx.lineWidth = 4;
+            for (var r = 0; r < 8; r++) {
+              var a = r * Math.PI / 4 + performance.now() / 4000;
+              ctx.beginPath();
+              ctx.moveTo(W - 70 + Math.cos(a) * 33, 56 + Math.sin(a) * 33);
+              ctx.lineTo(W - 70 + Math.cos(a) * 42, 56 + Math.sin(a) * 42);
+              ctx.stroke();
+            }
+          }
+
+          // clouds (parallax)
+          ctx.fillStyle = dark ? "rgba(220,228,240,0.5)" : "rgba(255,255,255,0.92)";
+          clouds.forEach(function (cl) {
+            var cx = ((cl.x - cameraX * 0.35) % (W + 320) + (W + 320)) % (W + 320) - 160;
+            cloud(cx, cl.y, cl.s);
+          });
+
+          // distant houses
+          ctx.fillStyle = dark ? "#24344d" : "#bcd9a8";
+          var houseSpacing = 190;
+          var firstHouse = Math.floor((cameraX * 0.6) / houseSpacing) * houseSpacing;
+          for (var hx = firstHouse; hx < cameraX * 0.6 + W + houseSpacing; hx += houseSpacing) {
+            var screenHx = hx - cameraX * 0.6;
+            var hh = 34 + ((hx / houseSpacing) % 3) * 9;
+            ctx.fillRect(screenHx, groundY - hh, 56, hh);
+            ctx.beginPath();
+            ctx.moveTo(screenHx - 5, groundY - hh);
+            ctx.lineTo(screenHx + 28, groundY - hh - 16);
+            ctx.lineTo(screenHx + 61, groundY - hh);
+            ctx.closePath(); ctx.fill();
+          }
+
+          // ground
+          ctx.fillStyle = dark ? "#3d5a34" : "#69a854";
+          ctx.fillRect(-20, groundY, W + 40, H - groundY + 20);
+          ctx.fillStyle = dark ? "#5b4632" : "#8a6b46";
+          ctx.fillRect(-20, groundY, W + 40, 7);
+          // road dashes / distance markers
+          ctx.fillStyle = dark ? "#e8e4d0" : "#ffffff";
+          ctx.font = "700 11px Trebuchet MS, sans-serif";
+          ctx.textAlign = "center";
+          var markerEvery = 450; // ~50 ft
+          var firstM = Math.floor(cameraX / markerEvery) * markerEvery;
+          for (var mx = firstM; mx < cameraX + W + markerEvery; mx += markerEvery) {
+            var smx = mx - cameraX;
+            ctx.fillRect(smx, groundY + 16, 26, 4);
+            if (mx > 0) ctx.fillText(Math.round(mx / 9) + " ft", smx + 13, groundY + 36);
+          }
+
+          // launch ramp
+          var rampX = LAUNCH_X + 66 - cameraX;
+          ctx.fillStyle = dark ? "#6b543c" : "#a07a4a";
+          ctx.strokeStyle = "#1c2733"; ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(rampX - 66, groundY);
+          ctx.lineTo(rampX, groundY - 44);
+          ctx.lineTo(rampX, groundY);
+          ctx.closePath(); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "#d0342c";
+          ctx.font = "900 11px Trebuchet MS, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("FLIP ZONE", rampX - 20, groundY - 8);
+
+          // slingshot posts when ready/aiming
+          if (state === "ready" || state === "aiming") {
+            ctx.strokeStyle = "#7a4a21";
+            ctx.lineWidth = 7;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(LAUNCH_X - cameraX - 34, groundY);
+            ctx.lineTo(LAUNCH_X - cameraX - 34, truck.y + 6);
+            ctx.moveTo(LAUNCH_X - cameraX + 40, groundY);
+            ctx.lineTo(LAUNCH_X - cameraX + 40, truck.y + 6);
+            ctx.stroke();
+          }
+
+          // aim: trajectory dots + elastic band
+          if (state === "aiming" && dragStart && dragNow) {
+            var dx = dragStart.x - dragNow.x;
+            var dy = dragStart.y - dragNow.y;
+            var dist = Math.hypot(dx, dy);
+            var power = Math.min(dist, 260) / 260;
+            powerFill.style.width = Math.round(power * 100) + "%";
+            if (dist >= 24) {
+              var speed = 620 + power * 980;
+              var ang = Math.atan2(dy, dx);
+              ang = Math.max(-1.45, Math.min(0.35, ang));
+              var vx = Math.cos(ang) * speed, vy = Math.sin(ang) * speed;
+              ctx.fillStyle = "rgba(208,52,44,0.75)";
+              var px = truck.x, py = truck.y, pvx = vx, pvy = vy;
+              var dtp = 0.09;
+              for (var i = 0; i < 16; i++) {
+                pvy += GRAV * dtp; px += pvx * dtp; py += pvy * dtp;
+                if (py > groundY) break;
+                ctx.beginPath();
+                ctx.arc(px - cameraX, py, 4.5 - i * 0.18, 0, 6.29);
+                ctx.fill();
+              }
+              // elastic band to pulled point
+              ctx.strokeStyle = "#d0342c";
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(LAUNCH_X - cameraX - 34, truck.y + 2);
+              ctx.lineTo(dragNow.x, dragNow.y);
+              ctx.lineTo(LAUNCH_X - cameraX + 40, truck.y + 2);
+              ctx.stroke();
+            }
+          }
+
+          // packages
+          packages.forEach(function (p) {
+            ctx.save();
+            ctx.translate(p.x - cameraX, p.y);
+            ctx.rotate(p.angle);
+            ctx.fillStyle = p.hue;
+            ctx.strokeStyle = "#1c2733"; ctx.lineWidth = 1.6;
+            roundRect(-p.size / 2, -p.size / 2, p.size, p.size, 2);
+            ctx.fill(); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(-p.size / 2, 0); ctx.lineTo(p.size / 2, 0);
+            ctx.moveTo(0, -p.size / 2); ctx.lineTo(0, p.size / 2);
+            ctx.stroke();
+            ctx.restore();
+          });
+
+          // the truck
+          drawTruck(truck.x - cameraX, truck.y, truck.angle);
+
+          // confetti
+          confetti.forEach(function (c) {
+            ctx.save();
+            ctx.translate(c.x, c.y);
+            ctx.rotate(c.angle);
+            ctx.fillStyle = c.color;
+            ctx.fillRect(-c.size / 2, -c.size / 4, c.size, c.size / 2);
+            ctx.restore();
+          });
+
+          ctx.restore();
+        }
+        function cloud(x, y, s) {
+          ctx.beginPath();
+          ctx.arc(x, y, 18 * s, 0, 6.29);
+          ctx.arc(x + 20 * s, y + 3 * s, 14 * s, 0, 6.29);
+          ctx.arc(x - 20 * s, y + 4 * s, 13 * s, 0, 6.29);
+          ctx.arc(x + 4 * s, y - 8 * s, 14 * s, 0, 6.29);
+          ctx.fill();
+        }
+
+        // ---- main loop ----
+        var last = performance.now();
+        function frame(now) {
+          var dt = Math.min(0.033, (now - last) / 1000);
+          last = now;
+          step(dt);
+          draw();
+          requestAnimationFrame(frame);
+        }
+
+        window.addEventListener("resize", resize);
+        seedClouds();
+        resize();
+        placeTruck();
+        requestAnimationFrame(frame);
+      })();
+    </script>
+  </body>
+</html>
