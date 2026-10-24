@@ -145,6 +145,7 @@
       }
       button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--panel-line); }
       button.secondary { background: var(--panel); color: var(--ink); }
+      button.active { background: var(--sun); color: var(--ink); transform: translateY(2px); box-shadow: 0 1px 0 var(--panel-line); }
       .meter {
         display: flex;
         align-items: center;
@@ -177,8 +178,9 @@
         <div class="stats">
           <div class="stat">Flips <b id="statFlips">0</b></div>
           <div class="stat">Distance <b id="statDist">0 ft</b></div>
-          <div class="stat">Best <b id="statBest">0 flips</b></div>
+          <div class="stat">Combo <b id="statCombo">×1</b></div>
           <div class="stat">Score <b id="statScore">0</b></div>
+          <div class="stat">Best <b id="statBest">0</b></div>
         </div>
       </header>
       <div id="wrap">
@@ -189,6 +191,7 @@
       <footer>
         <button id="btnReset" type="button">↩ New Truck</button>
         <button id="btnHonk" type="button" class="secondary">📯 Honk</button>
+        <button id="btnSpin" type="button" class="secondary">🌀 Hold to Spin</button>
         <div class="meter"><span>Power</span><div class="meterbar"><div class="meterfill" id="powerFill"></div></div></div>
       </footer>
     </div>
@@ -204,6 +207,7 @@
         var powerFill = document.getElementById("powerFill");
         var statFlips = document.getElementById("statFlips");
         var statDist = document.getElementById("statDist");
+        var statCombo = document.getElementById("statCombo");
         var statBest = document.getElementById("statBest");
         var statScore = document.getElementById("statScore");
 
@@ -243,6 +247,14 @@
         var landed = false;
         var bannerTimer = 0;
         var shake = 0;
+        var spinning = false;
+        var mailboxes = [];
+        var ramps = [];
+        var bestScore = 0;
+        var deliveryBonus = 0;
+        var comboBroken = false;
+        var finalScore = null;
+        var rampCooldown = 0;
 
         function placeTruck() {
           truck = {
@@ -252,6 +264,7 @@
           cameraX = 0;
           startX = truck.x;
           totalRotation = 0; flips = 0; airTime = 0; bounceCount = 0; landed = false;
+          deliveryBonus = 0; comboBroken = false; finalScore = null; spinning = false;
           packages = [];
           updateStats();
         }
@@ -265,6 +278,46 @@
               s: 0.6 + Math.random() * 0.9
             });
           }
+        }
+
+        // ---- course: rolling hills, ramp wedges, mailboxes ----
+        function terrainY(x) {
+          if (x < 500) return groundY; // launch pad stays flat
+          var t = Math.min(1, (x - 500) / 900);
+          var h = Math.sin(x * 0.0034) * 20 + Math.sin(x * 0.0015 + 1.3) * 30 + Math.sin(x * 0.00062 + 4.1) * 16;
+          return groundY - h * t;
+        }
+        function rng(seed) {
+          var s = seed % 2147483647; if (s <= 0) s += 2147483646;
+          return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+        }
+        function buildCourse() {
+          var rand = rng(20261024); // same course every load
+          ramps = [];
+          var rx = 1500;
+          for (var j = 0; j < 16; j++) { ramps.push({ x: rx, w: 96, h: 56 }); rx += 1250 + rand() * 550; }
+          mailboxes = [];
+          var mx = 720 + rand() * 200;
+          for (var i = 0; i < 40; i++) {
+            for (var k = 0; k < ramps.length; k++) {
+              if (mx > ramps[k].x - 60 && mx < ramps[k].x + ramps[k].w + 60) mx = ramps[k].x + ramps[k].w + 90;
+            }
+            mailboxes.push({ x: mx, delivered: false, crushed: false });
+            mx += 540 + rand() * 420;
+          }
+        }
+        function rampSurfY(x) {
+          for (var i = 0; i < ramps.length; i++) {
+            var r = ramps[i];
+            if (x >= r.x && x <= r.x + r.w) return terrainY(r.x) - ((x - r.x) / r.w) * r.h;
+          }
+          return null;
+        }
+        function floorYAt(x) {
+          var fy = terrainY(x);
+          var ry = rampSurfY(x);
+          if (ry !== null && ry < fy) fy = ry;
+          return fy;
         }
 
         // ---- audio (tiny synth, no assets) ----
@@ -299,6 +352,11 @@
           var notes = [523, 659, 784, 1047];
           notes.forEach(function (n, i) { setTimeout(function () { beep(n, 0.16, "square", 0.1); }, i * 90); });
         }
+        function ding() {
+          beep(1319, 0.14, "sine", 0.16);
+          setTimeout(function () { beep(1760, 0.24, "sine", 0.16); }, 110);
+        }
+        function sadSlide() { beep(300, 0.55, "sawtooth", 0.07, -170); }
 
         // ---- input ----
         function pointerPos(e) {
@@ -312,6 +370,10 @@
             dragNow = dragStart;
             state = "aiming";
             canvas.setPointerCapture(e.pointerId);
+          } else if (state === "flying") {
+            spinning = true;
+            truck.va = Math.max(-26, truck.va - 2.6); // tap = instant spin kick
+            btnSpin.classList.add("active");
           } else if (state === "crashed") {
             placeTruck(); state = "ready";
             hint.textContent = "Drag back on the truck to aim… let go to LAUNCH! 🚀";
@@ -321,6 +383,7 @@
           if (state === "aiming") dragNow = pointerPos(e);
         });
         canvas.addEventListener("pointerup", function (e) {
+          if (state === "flying") { spinning = false; btnSpin.classList.remove("active"); return; }
           if (state !== "aiming") return;
           var dx = dragStart.x - dragNow.x;
           var dy = dragStart.y - dragNow.y;
@@ -340,11 +403,12 @@
           state = "flying";
           boing(power * 100);
           spawnPackages(4 + Math.round(power * 6));
-          hint.textContent = "WHEEE! Count those flips! 🤸";
+          hint.textContent = "WHEEE! HOLD to spin mid-air — park by a mailbox! 📬";
           powerFill.style.width = "0%";
           dragStart = dragNow = null;
         });
         canvas.addEventListener("pointercancel", function () {
+          spinning = false; btnSpin.classList.remove("active");
           if (state === "aiming") { state = "ready"; powerFill.style.width = "0%"; dragStart = dragNow = null; }
         });
 
@@ -354,6 +418,26 @@
           hint.textContent = "Drag back on the truck to aim… let go to LAUNCH! 🚀";
         });
         document.getElementById("btnHonk").addEventListener("click", honk);
+
+        // mid-air spin control: hold the button (or Space) while flying
+        var btnSpin = document.getElementById("btnSpin");
+        function spinOn() {
+          ac();
+          if (state === "flying" && truck) {
+            if (!spinning) truck.va = Math.max(-26, truck.va - 2.6);
+            spinning = true;
+            btnSpin.classList.add("active");
+          }
+        }
+        function spinOff() { spinning = false; btnSpin.classList.remove("active"); }
+        btnSpin.addEventListener("pointerdown", function (e) { e.preventDefault(); spinOn(); });
+        btnSpin.addEventListener("pointerup", spinOff);
+        btnSpin.addEventListener("pointerleave", spinOff);
+        btnSpin.addEventListener("pointercancel", spinOff);
+        window.addEventListener("keydown", function (e) {
+          if (e.code === "Space" && !e.repeat) { e.preventDefault(); spinOn(); }
+        });
+        window.addEventListener("keyup", function (e) { if (e.code === "Space") spinOff(); });
 
         function spawnPackages(n) {
           for (var i = 0; i < n; i++) {
@@ -392,12 +476,18 @@
         }
         function hideBanner() { banner.classList.remove("show"); bannerTimer = 0; }
 
+        function baseScore() {
+          var distFt = Math.max(0, Math.round((truck.x - startX) / 9));
+          return flips * 500 + distFt * 2 + Math.round(airTime * 25) + deliveryBonus;
+        }
+        function comboMult() { return 1 + flips; }
         function updateStats() {
           var distFt = Math.max(0, Math.round((truck.x - startX) / 9));
           statFlips.textContent = flips;
           statDist.textContent = distFt + " ft";
-          statBest.textContent = bestFlips + (bestFlips === 1 ? " flip" : " flips");
-          score = flips * 500 + distFt * 2 + Math.round(airTime * 25);
+          statCombo.textContent = comboBroken ? "💔 broken" : "×" + comboMult();
+          statBest.textContent = bestScore;
+          score = finalScore !== null ? finalScore : baseScore() * comboMult();
           statScore.textContent = score;
         }
 
@@ -405,6 +495,7 @@
         function step(dt) {
           if (bannerTimer > 0) { bannerTimer -= dt; if (bannerTimer <= 0) hideBanner(); }
           if (shake > 0) shake = Math.max(0, shake - dt * 2.2);
+          if (rampCooldown > 0) rampCooldown -= dt;
 
           // confetti always animates
           for (var i = confetti.length - 1; i >= 0; i--) {
@@ -420,6 +511,7 @@
           truck.vy += GRAV * dt;
           truck.x += truck.vx * dt;
           truck.y += truck.vy * dt;
+          if (spinning) truck.va = Math.max(-26, truck.va - 17 * dt); // held spin = skill flips
           var prevAngle = truck.angle;
           truck.angle += truck.va * dt;
           totalRotation += Math.abs(truck.angle - prevAngle);
@@ -434,23 +526,35 @@
             var p = packages[j];
             p.vy += GRAV * dt;
             p.x += p.vx * dt; p.y += p.vy * dt; p.angle += p.va * dt;
-            if (p.y > groundY - p.size / 2) {
-              p.y = groundY - p.size / 2;
+            var pFloor = terrainY(p.x) - p.size / 2;
+            if (p.y > pFloor) {
+              p.y = pFloor;
               p.vy *= -0.35; p.vx *= 0.7; p.va *= 0.5;
               if (Math.abs(p.vy) < 40) p.vy = 0;
             }
             if (p.x < cameraX - 200) packages.splice(j, 1);
           }
 
-          // ground contact
-          var floorY = groundY - TRUCK_H / 2;
+          // ground contact — floor follows the hills, ramp wedges sit on top
+          var rsY = rampSurfY(truck.x);
+          var onRamp = rsY !== null && rsY <= terrainY(truck.x) + 1;
+          var floorY = floorYAt(truck.x) - TRUCK_H / 2;
           if (truck.y >= floorY) {
             truck.y = floorY;
             var impact = truck.vy;
             // normalize angle to -PI..PI to judge landing
             var norm = Math.atan2(Math.sin(truck.angle), Math.cos(truck.angle));
             var upright = Math.abs(norm) < 0.6;
-            if (impact > 260 && bounceCount < 2 && !upright) {
+            if (onRamp && truck.vx > 280 && rampCooldown <= 0) {
+              // hit a ramp face at speed: it launches you again, with extra backspin
+              truck.vy = -(truck.vx * 0.52 + 240);
+              truck.vx *= 0.94;
+              truck.va -= 3.2;
+              rampCooldown = 0.6;
+              boing(60);
+              showBanner("RAMP BOOST! 🛫", 800);
+              spawnPackages(2);
+            } else if (impact > 260 && bounceCount < 2 && !upright) {
               // bounce & keep tumbling — the fun part
               truck.vy = -impact * 0.45;
               truck.vx *= 0.82;
@@ -486,27 +590,55 @@
           if (landed) return;
           landed = true;
           state = "crashed";
+          spinning = false;
+          if (btnSpin) btnSpin.classList.remove("active");
           truck.vx = 0; truck.vy = 0; truck.va = 0;
           if (flips > bestFlips) bestFlips = flips;
           var distFt = Math.max(0, Math.round((truck.x - startX) / 9));
-          if (upright && flips >= 1) {
+
+          // Special Delivery: how close did we park to the nearest mailbox?
+          var near = null, nearDist = Infinity;
+          for (var i = 0; i < mailboxes.length; i++) {
+            var d = Math.abs(truck.x - mailboxes[i].x);
+            if (d < nearDist) { nearDist = d; near = mailboxes[i]; }
+          }
+          var deliveryKind = "";
+          if (near && nearDist <= 30) { deliveryKind = "direct"; deliveryBonus = 1500; near.delivered = true; near.crushed = true; }
+          else if (near && nearDist <= 90) { deliveryKind = "close"; deliveryBonus = 750; near.delivered = true; }
+
+          // Combo: flips build the multiplier, a wheels-down landing banks it, a roof landing breaks it
+          var mult = comboMult();
+          var comboApplied = upright && flips >= 1;
+          if (!upright && flips >= 1) comboBroken = true;
+          finalScore = baseScore() * (comboApplied ? mult : 1);
+          score = finalScore;
+          if (score > bestScore) bestScore = score;
+
+          if (deliveryKind) {
+            showBanner(deliveryKind === "direct" ? "SPECIAL DELIVERY — DIRECT HIT! 📬" : "SPECIAL DELIVERY! 📬", 2600);
+            burstConfetti(truck.x - cameraX, truck.y - 50);
+            ding(); setTimeout(cheer, 150);
+            hint.textContent = (deliveryKind === "direct" ? "Bullseye — you parked ON the mailbox! " : "Parked right at the mailbox! ") +
+              "+" + deliveryBonus + " bonus" + (comboApplied ? " and combo ×" + mult + " banked" : (comboBroken ? " — but the roof landing broke your combo" : "")) +
+              ". Total: " + score + " pts. Tap anywhere to go again!";
+          } else if (upright && flips >= 1) {
             showBanner("STUCK THE LANDING! 🎉", 2400);
             burstConfetti(truck.x - cameraX, truck.y - 50);
             cheer();
-            hint.textContent = "Nailed it! " + flips + " flips, " + distFt + " ft. Tap anywhere for a fresh truck.";
+            hint.textContent = "Nailed it! " + flips + " flips with combo ×" + mult + " = " + score + " pts, " + distFt + " ft. Tap anywhere for a fresh truck.";
           } else if (flips >= 3) {
             showBanner("TOTAL YARD SALE! 📦💥", 2400);
             burstConfetti(truck.x - cameraX, truck.y - 40);
-            thud();
-            hint.textContent = flips + " flips and a glorious wreck. Tap anywhere to go again!";
-          } else if (flips >= 1) {
-            showBanner("CRASH LANDING! 💥", 2200);
             thud(); shake = 0.8;
-            hint.textContent = flips + " flip" + (flips === 1 ? "" : "s") + ", " + distFt + " ft. Tap anywhere to go again!";
+            hint.textContent = flips + " flips and a glorious wreck — the roof landing broke the ×" + mult + " combo. " + score + " pts. Tap anywhere to go again!";
+          } else if (!upright && flips >= 1) {
+            showBanner("COMBO BROKEN! 💔", 2200);
+            sadSlide(); shake = 0.7;
+            hint.textContent = "Roof landing! The ×" + mult + " combo is gone — " + score + " pts. Stick it wheels-down to bank the multiplier. Tap anywhere to retry.";
           } else {
             showBanner("NO FLIPS?! 😱", 2000);
             thud(); shake = 0.6;
-            hint.textContent = "Zero flips — pull back FARTHER and aim UP! Tap anywhere to retry.";
+            hint.textContent = "Zero flips — pull back FARTHER, aim UP, and HOLD mid-air to spin! Tap anywhere to retry.";
           }
           updateStats();
         }
@@ -585,7 +717,7 @@
           if (dark) { sky.addColorStop(0, "#1b2a44"); sky.addColorStop(1, "#33507e"); }
           else { sky.addColorStop(0, "#8ec9ee"); sky.addColorStop(1, "#dff2fd"); }
           ctx.fillStyle = sky;
-          ctx.fillRect(-20, -20, W + 40, groundY + 20);
+          ctx.fillRect(-20, -20, W + 40, H + 40);
 
           // sun / moon
           ctx.fillStyle = dark ? "#e8e4d0" : "#ffd83d";
@@ -615,7 +747,7 @@
           for (var hx = firstHouse; hx < cameraX * 0.6 + W + houseSpacing; hx += houseSpacing) {
             var screenHx = hx - cameraX * 0.6;
             var hh = 34 + ((hx / houseSpacing) % 3) * 9;
-            ctx.fillRect(screenHx, groundY - hh, 56, hh);
+            ctx.fillRect(screenHx, groundY - hh, 56, hh + 90);
             ctx.beginPath();
             ctx.moveTo(screenHx - 5, groundY - hh);
             ctx.lineTo(screenHx + 28, groundY - hh - 16);
@@ -623,12 +755,22 @@
             ctx.closePath(); ctx.fill();
           }
 
-          // ground
+          // ground — rolling hills the truck actually drives over
           ctx.fillStyle = dark ? "#3d5a34" : "#69a854";
-          ctx.fillRect(-20, groundY, W + 40, H - groundY + 20);
-          ctx.fillStyle = dark ? "#5b4632" : "#8a6b46";
-          ctx.fillRect(-20, groundY, W + 40, 7);
-          // road dashes / distance markers
+          ctx.beginPath();
+          ctx.moveTo(-20, H + 20);
+          for (var gx = -20; gx <= W + 24; gx += 16) ctx.lineTo(gx, terrainY(gx + cameraX));
+          ctx.lineTo(W + 24, H + 20);
+          ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = dark ? "#5b4632" : "#8a6b46";
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          for (var gx2 = -20; gx2 <= W + 24; gx2 += 16) {
+            if (gx2 === -20) ctx.moveTo(gx2, terrainY(gx2 + cameraX));
+            else ctx.lineTo(gx2, terrainY(gx2 + cameraX));
+          }
+          ctx.stroke();
+          // distance markers follow the terrain
           ctx.fillStyle = dark ? "#e8e4d0" : "#ffffff";
           ctx.font = "700 11px Trebuchet MS, sans-serif";
           ctx.textAlign = "center";
@@ -636,8 +778,9 @@
           var firstM = Math.floor(cameraX / markerEvery) * markerEvery;
           for (var mx = firstM; mx < cameraX + W + markerEvery; mx += markerEvery) {
             var smx = mx - cameraX;
-            ctx.fillRect(smx, groundY + 16, 26, 4);
-            if (mx > 0) ctx.fillText(Math.round(mx / 9) + " ft", smx + 13, groundY + 36);
+            var smy = terrainY(mx);
+            ctx.fillRect(smx, smy + 14, 26, 4);
+            if (mx > 0) ctx.fillText(Math.round(mx / 9) + " ft", smx + 13, smy + 34);
           }
 
           // launch ramp
@@ -653,6 +796,52 @@
           ctx.font = "900 11px Trebuchet MS, sans-serif";
           ctx.textAlign = "center";
           ctx.fillText("FLIP ZONE", rampX - 20, groundY - 8);
+
+          // course ramps — hit one at speed for a RAMP BOOST back into the air
+          ramps.forEach(function (r) {
+            var rx2 = r.x - cameraX;
+            if (rx2 < -180 || rx2 > W + 80) return;
+            var baseY = terrainY(r.x);
+            ctx.fillStyle = dark ? "#6b543c" : "#b0824f";
+            ctx.strokeStyle = "#1c2733"; ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(rx2, baseY + 2);
+            ctx.lineTo(rx2 + r.w, baseY - r.h);
+            ctx.lineTo(rx2 + r.w, baseY + 2);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = "rgba(28,39,51,0.3)"; ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(rx2 + 14, baseY - 4); ctx.lineTo(rx2 + r.w - 10, baseY - r.h + 14);
+            ctx.moveTo(rx2 + 34, baseY - 4); ctx.lineTo(rx2 + r.w - 10, baseY - r.h + 30);
+            ctx.stroke();
+          });
+
+          // mailboxes — park next to one for a Special Delivery bonus
+          mailboxes.forEach(function (mb) {
+            var bx = mb.x - cameraX;
+            if (bx < -60 || bx > W + 60) return;
+            var by = terrainY(mb.x);
+            ctx.save();
+            ctx.translate(bx, by);
+            if (mb.crushed) { ctx.rotate(0.45); ctx.translate(0, 16); }
+            ctx.fillStyle = "#7a4a21";
+            ctx.fillRect(-3, -26, 6, 26);
+            ctx.fillStyle = mb.delivered ? "#2e9e4f" : "#1d4e9e";
+            ctx.strokeStyle = "#1c2733"; ctx.lineWidth = 2;
+            roundRect(-18, -48, 36, 22, 7); ctx.fill(); ctx.stroke();
+            if (mb.delivered) {
+              ctx.fillStyle = "#ffffff";
+              ctx.font = "900 13px Trebuchet MS, sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText("✓", 0, -32);
+            }
+            // flag: red while waiting, gold and up once delivered
+            ctx.strokeStyle = "#1c2733"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(13, -48); ctx.lineTo(13, -60); ctx.stroke();
+            ctx.fillStyle = mb.delivered ? "#f5b301" : "#d0342c";
+            if (mb.delivered) ctx.fillRect(13, -60, 11, 7); else ctx.fillRect(13, -53, 11, 7);
+            ctx.restore();
+          });
 
           // slingshot posts when ready/aiming
           if (state === "ready" || state === "aiming") {
@@ -719,6 +908,21 @@
           // the truck
           drawTruck(truck.x - cameraX, truck.y, truck.angle);
 
+          // spin swirls while the player holds spin mid-air
+          if (state === "flying" && spinning) {
+            ctx.save();
+            ctx.translate(truck.x - cameraX, truck.y);
+            ctx.strokeStyle = "rgba(245,179,1,0.85)";
+            ctx.lineWidth = 3;
+            var tw = performance.now() / 60;
+            for (var si = 0; si < 3; si++) {
+              ctx.beginPath();
+              ctx.arc(0, 0, 54 + si * 9, tw + si * 2.1, tw + si * 2.1 + 1.5);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+
           // confetti
           confetti.forEach(function (c) {
             ctx.save();
@@ -752,6 +956,7 @@
 
         window.addEventListener("resize", resize);
         seedClouds();
+        buildCourse();
         resize();
         placeTruck();
         requestAnimationFrame(frame);
