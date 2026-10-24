@@ -1,22 +1,25 @@
-# Spam Musubi Stand 🍙
+# Creeves Arcade 🕹️
 
-A 2-minute lunch-rush game: build spam musubi to order.
+One repository, many small games. The home page (`index.html`) is the arcade cabinet — it links to every game, and each game lives in its own folder as a single self-contained page. No build steps, no dependencies; everything runs in the browser.
 
-## How to play
+## Games
 
-- Customer tickets show the exact layer stack to build — rice block base, then Spam, tamago egg, cheese, avocado, furikake, and teriyaki sauce, in order.
-- A sweeping sear gauge rewards timing your Spam add to the green zone with crispy bonuses.
-- Serve a correct musubi to wrap it in nori, score points, and build a combo multiplier. Wrong stacks get rejected with a hint.
-- Patience bars drain on every ticket — three walk-outs ends the shift. Orders get taller as the shift goes on, and Rush Hour in the final minute pays bonus tips.
-- At the end you get a report card: grade (S–D), score, musubi served, best combo, and crispy count.
+| Game | Folder | What it is |
+| --- | --- | --- |
+| 🍙 Spam Musubi Stand | [`spam-musubi-game/`](spam-musubi-game/) | A 2-minute lunch rush: build musubi to order, time the sear, beat the clock. |
 
-## Controls
+## Play online
 
-- Tap or click the ingredient buttons, or use number keys **1–7**
-- **Enter** — Wrap & Serve
-- **Backspace** — Undo last layer
-- Scrap button clears the plate
+With GitHub Pages enabled for this repo (Settings → Pages → deploy from the `main` branch, root folder), the arcade is live at:
 
-## Play it
+**https://creevesu.github.io/Creevesu2/**
 
-Open `index.html` in any browser — it's a single self-contained file, no build step, no dependencies. Designed to fit on one screen, phone or desktop.
+Each game gets its own link too, e.g. `https://creevesu.github.io/Creevesu2/spam-musubi-game/`.
+
+## Adding a game
+
+1. Put the game's page in its own folder: `<game-name>/index.html`.
+2. Add a card for it in the root `index.html` linking to `./<game-name>/`.
+3. Add a row to the table above.
+
+That's it — the arcade page and GitHub Pages pick it up automatically.

@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Spam Musubi Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:ital,wght@0,600;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet" />
+    <style>
+      :root{
+        --bg:#fdeeda;
+        --bg-deep:#f8ddba;
+        --card:#fffaf1;
+        --card-2:#ffffff;
+        --ink:#33241a;
+        --ink-soft:#7a5f4c;
+        --line:#ecd9bd;
+        --teal:#0e7c7b;
+        --teal-dark:#0a5f5e;
+        --coral:#ff6b4a;
+        --coral-dark:#e04e2d;
+        --mustard:#ffc53d;
+        --spam:#ef5d7a;
+        --spam-dark:#d63d5c;
+        --good:#2fa84f;
+        --bad:#e23b3b;
+        --shadow:0 10px 24px rgba(94,54,18,.16);
+        --radius:18px;
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --bg:#12211f;
+          --bg-deep:#0c1715;
+          --card:#1b2f2b;
+          --card-2:#233a36;
+          --ink:#f6ead9;
+          --ink-soft:#c4ab90;
+          --line:#33504a;
+          --teal:#2bb3a3;
+          --teal-dark:#1d8a7d;
+          --shadow:0 10px 24px rgba(0,0,0,.45);
+        }
+      }
+      *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+      html,body{margin:0;padding:0;height:100%;}
+      button{touch-action:manipulation;}
+      body{
+        font-family:"Nunito",system-ui,sans-serif;
+        background:
+          radial-gradient(circle at 12% -4%, rgba(255,197,61,.35), transparent 42%),
+          radial-gradient(circle at 95% 0%, rgba(255,107,74,.22), transparent 38%),
+          linear-gradient(180deg,var(--bg) 0%,var(--bg-deep) 100%);
+        color:var(--ink);
+        height:100vh;
+        height:100dvh;
+        overflow:hidden;
+      }
+      .wrap{max-width:1120px;margin:0 auto;padding:10px 12px calc(12px + env(safe-area-inset-bottom, 0px));height:100%;display:flex;flex-direction:column;}
+
+      /* ---------- Top stats bar ---------- */
+      .statsbar{
+        display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;justify-content:space-between;
+        background:var(--card);border:2px solid var(--line);border-radius:var(--radius);
+        padding:7px 12px;box-shadow:var(--shadow);flex:none;
+      }
+      .stat{display:flex;flex-direction:column;justify-content:center;min-width:76px;}
+      .stat .label{font-size:.64rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);}
+      .stat .value{font-family:"Fredoka",sans-serif;font-size:1.3rem;font-weight:700;line-height:1.05;}
+      .stat.score .value{color:var(--teal-dark);}
+      @media (prefers-color-scheme: dark){ .stat.score .value{color:var(--teal);} }
+      .hearts{display:flex;gap:3px;font-size:1.15rem;line-height:1.2;}
+      .hearts .lost{filter:grayscale(1);opacity:.28;}
+      .combo-pill{
+        align-self:center;font-family:"Fredoka",sans-serif;font-weight:700;font-size:1rem;
+        background:var(--mustard);color:#4a2f00;border-radius:999px;padding:6px 14px;
+        border:2px solid rgba(0,0,0,.08);white-space:nowrap;
+      }
+      .combo-pill.hot{background:var(--coral);color:#fff;animation:pulse .5s ease infinite alternate;}
+      @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.07)}}
+      .clock-wrap{display:flex;flex-direction:column;justify-content:center;min-width:130px;flex:1;max-width:230px;}
+      .clock-bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:4px;}
+      .clock-fill{height:100%;background:var(--teal);border-radius:99px;transition:width .2s linear;}
+      .clock-fill.low{background:var(--bad);}
+
+      /* ---------- Layout ---------- */
+      .layout{display:grid;grid-template-columns:290px 1fr;gap:12px;margin-top:10px;flex:1;min-height:0;}
+      @media (max-width:820px){ .layout{grid-template-columns:1fr;grid-template-rows:minmax(0,auto) minmax(0,1fr);} }
+
+      .panel{background:var(--card);border:2px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:11px 12px;min-height:0;overflow:hidden;}
+      .panel h2{font-family:"Fredoka",sans-serif;font-size:1.05rem;margin:0 0 2px;display:flex;align-items:center;gap:8px;}
+      .panel .sub{font-size:.78rem;color:var(--ink-soft);font-weight:700;margin:0 0 8px;}
+
+      /* ---------- Order tickets ---------- */
+      .tickets{display:flex;flex-direction:column;gap:8px;}
+      @media (max-width:820px){ .tickets{flex-direction:row;flex-wrap:nowrap;} .ticket{flex:1 1 0;min-width:0;} }
+      .ticket{
+        background:var(--card-2);border:2px dashed var(--line);border-radius:14px;padding:8px 10px;
+        position:relative;transition:transform .15s ease,border-color .15s ease;
+      }
+      .ticket.matchable{border-color:var(--good);border-style:solid;}
+      .ticket-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:6px;}
+      .ticket-name{font-family:"Fredoka",sans-serif;font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .ticket-pts{font-size:.7rem;font-weight:900;background:var(--mustard);color:#4a2f00;border-radius:99px;padding:2px 7px;white-space:nowrap;}
+      .ticket-body{display:flex;gap:8px;align-items:flex-end;}
+      .mini-stack{display:flex;flex-direction:column-reverse;gap:2px;width:50px;flex:none;padding:3px;background:rgba(0,0,0,.05);border-radius:8px;}
+      .mini-layer{height:7px;border-radius:3px;position:relative;}
+      .ticket-list{font-size:.72rem;font-weight:800;line-height:1.35;color:var(--ink-soft);margin:0;padding:0;list-style:none;}
+      .ticket-list li b{color:var(--ink);}
+      .patience{height:7px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px;}
+      .patience-fill{height:100%;background:var(--good);border-radius:99px;transition:width .2s linear;}
+      .patience-fill.warn{background:var(--mustard);}
+      .patience-fill.danger{background:var(--bad);}
+      .ticket.empty-slot{opacity:.45;border-style:dashed;display:flex;align-items:center;justify-content:center;min-height:78px;font-weight:800;color:var(--ink-soft);font-size:.8rem;text-align:center;}
+      .ticket.new-in{animation:slideIn .3s ease;}
+      @keyframes slideIn{from{transform:translateY(-8px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+      /* ---------- Build station ---------- */
+      .station{display:flex;flex-direction:column;align-items:center;}
+      .board{
+        width:100%;max-width:430px;min-height:150px;flex:1 1 auto;
+        background:
+          repeating-linear-gradient(90deg, rgba(146,96,44,.10) 0 26px, rgba(146,96,44,.03) 26px 52px),
+          linear-gradient(180deg,#e9b877,#d99e52);
+        border:3px solid #b57e35;border-radius:16px;
+        display:flex;flex-direction:column;justify-content:flex-end;align-items:center;
+        padding:12px 12px 12px;position:relative;overflow:hidden;
+      }
+      @media (prefers-color-scheme: dark){ .board{border-color:#8a5f27;} }
+      .board::after{content:"";position:absolute;left:0;right:0;bottom:0;height:10px;background:rgba(90,50,10,.25);}
+      .stack-zone{display:flex;flex-direction:column-reverse;align-items:center;gap:3px;width:210px;position:relative;z-index:1;}
+      .stack-empty{color:#6d4416;font-weight:900;font-size:.88rem;text-align:center;padding:16px 8px;background:rgba(255,250,241,.55);border:2px dashed rgba(109,68,22,.5);border-radius:12px;width:100%;}
+      .layer{
+        width:100%;border-radius:9px;position:relative;flex:none;
+        display:flex;align-items:center;justify-content:flex-end;padding-right:9px;
+        animation:drop .22s ease;box-shadow:inset 0 -3px 0 rgba(0,0,0,.12), 0 2px 4px rgba(60,30,0,.25);
+      }
+      @keyframes drop{from{transform:translateY(-26px);opacity:0}to{transform:translateY(0);opacity:1}}
+      .layer .tag{font-size:.6rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.75);color:#503113;border-radius:99px;padding:1px 7px;}
+      .layer.rice{height:30px;background:#fffdf6;background-image:radial-gradient(rgba(190,170,130,.55) 1.3px, transparent 1.4px),radial-gradient(rgba(190,170,130,.4) 1.1px, transparent 1.2px);background-size:17px 15px,13px 19px;background-position:2px 4px,8px 9px;border:2px solid #e6dcc4;}
+      .layer.spam{height:23px;background:linear-gradient(180deg,#f67e96,#e14b68);background-image:repeating-linear-gradient(115deg, rgba(146,32,54,.0) 0 14px, rgba(146,32,54,.35) 14px 17px),linear-gradient(180deg,#f67e96,#e14b68);border:2px solid #c23352;}
+      .layer.spam.crispy{background-image:repeating-linear-gradient(115deg, rgba(96,16,32,.15) 0 10px, rgba(96,16,32,.55) 10px 14px),linear-gradient(180deg,#e85d78,#c22e4c);border-color:#93203a;}
+      .layer.egg{height:18px;background:linear-gradient(180deg,#ffe066,#ffcf3f);border:2px solid #e0a81e;}
+      .layer.cheese{height:13px;background:linear-gradient(180deg,#ffb03a,#ff8f1c);border:2px solid #dd7410;border-radius:5px 5px 12px 12px;}
+      .layer.avocado{height:16px;background:linear-gradient(180deg,#a5dd7a,#6fbf45);border:2px solid #4f9c2e;}
+      .layer.furikake{height:11px;background:#fffef8;background-image:radial-gradient(#2e5d33 1.4px, transparent 1.5px),radial-gradient(#1d1d1d 1.2px, transparent 1.3px),radial-gradient(#e8b23a 1.3px, transparent 1.4px);background-size:13px 9px,17px 11px,11px 8px;border:2px solid #d9d2ba;}
+      .layer.sauce{height:10px;background-color:rgba(122,63,33,.18);background-image:repeating-linear-gradient(135deg,#7a3f21 0 9px, transparent 9px 18px);border-radius:6px;box-shadow:none;}
+      .layer.sauce .tag{background:rgba(255,255,255,.85);}
+      .nori-wrap{
+        position:absolute;inset:auto 0 -4px 0;height:0;background:linear-gradient(180deg,#26443a,#16281f);
+        border-radius:0 0 10px 10px;z-index:2;transition:height .3s ease;pointer-events:none;
+      }
+      .stack-zone.served .nori-wrap{height:58%;}
+      .stack-zone.fly{animation:flyOut .45s ease forwards;}
+      @keyframes flyOut{to{transform:translateX(120%) rotate(4deg);opacity:0}}
+      .stack-zone.shake{animation:shake .35s ease;}
+      @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(5px)}}
+
+      .hint{min-height:1.4em;margin:7px 0 0;font-weight:900;font-size:.9rem;text-align:center;color:var(--ink-soft);}
+      .hint.good{color:var(--good);}
+      .hint.bad{color:var(--bad);}
+
+      /* Sear gauge */
+      .sear{width:100%;max-width:430px;margin-top:9px;flex:none;}
+      .sear-head{display:flex;justify-content:space-between;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;}
+      .sear-track{position:relative;height:16px;border-radius:99px;background:linear-gradient(90deg,#f6c177 0%,#f6c177 34%,#2fa84f 34%,#2fa84f 66%,#a83232 66%,#a83232 100%);border:2px solid rgba(0,0,0,.15);overflow:visible;}
+      .sear-needle{position:absolute;top:-5px;width:6px;height:26px;background:var(--ink);border-radius:3px;transform:translateX(-50%);box-shadow:0 2px 5px rgba(0,0,0,.35);}
+      .sear-note{text-align:center;font-size:.78rem;font-weight:800;color:var(--ink-soft);margin-top:4px;min-height:1.15em;}
+
+      /* ---------- Ingredient buttons ---------- */
+      .ingredients{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px;width:100%;flex:none;}
+      .ing-btn{
+        font-family:inherit;cursor:pointer;border:2px solid var(--line);background:var(--card-2);
+        border-radius:14px;padding:7px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;
+        font-weight:900;font-size:.8rem;color:var(--ink);transition:transform .08s ease,border-color .12s ease, box-shadow .12s ease;
+      }
+      .ing-btn:hover{border-color:var(--teal);transform:translateY(-2px);box-shadow:var(--shadow);}
+      .ing-btn:active{transform:scale(.96);}
+      .ing-btn svg{width:34px;height:25px;}
+      .ing-btn .key{font-size:.6rem;font-weight:900;color:var(--ink-soft);letter-spacing:.06em;}
+      .ing-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;}
+
+      .actions{display:flex;gap:8px;margin-top:10px;width:100%;flex-wrap:nowrap;flex:none;}
+      .btn{
+        font-family:"Fredoka",sans-serif;font-weight:600;cursor:pointer;border-radius:14px;border:2px solid transparent;
+        padding:10px 14px;font-size:1rem;transition:transform .08s ease, filter .12s ease;white-space:nowrap;
+      }
+      .btn:active{transform:scale(.97);}
+      .btn-serve{flex:1;background:var(--coral);color:#fff;font-size:1.1rem;box-shadow:0 5px 0 var(--coral-dark);}
+      .btn-serve:hover{filter:brightness(1.06);}
+      .btn-serve:active{box-shadow:0 2px 0 var(--coral-dark);}
+      .btn-ghost{background:var(--card-2);border-color:var(--line);color:var(--ink);}
+      .btn-ghost:hover{border-color:var(--ink-soft);}
+
+      /* ---------- Score popups ---------- */
+      .pop{
+        position:fixed;z-index:60;font-family:"Fredoka",sans-serif;font-weight:700;font-size:1.5rem;color:var(--good);
+        pointer-events:none;animation:rise 1s ease forwards;text-shadow:0 2px 0 rgba(255,255,255,.7);
+      }
+      @media (prefers-color-scheme: dark){ .pop{text-shadow:0 2px 0 rgba(0,0,0,.6);} }
+      @keyframes rise{from{transform:translateY(0);opacity:1}to{transform:translateY(-64px);opacity:0}}
+
+      /* ---------- Overlays ---------- */
+      .overlay{
+        position:fixed;inset:0;z-index:80;background:rgba(38,20,8,.62);backdrop-filter:blur(3px);
+        display:flex;align-items:center;justify-content:center;padding:16px;
+      }
+      .overlay.hidden{display:none;}
+      .sheet{
+        background:var(--card);border-radius:22px;max-width:520px;width:100%;padding:26px 26px 22px;
+        box-shadow:0 24px 60px rgba(0,0,0,.4);text-align:center;max-height:92vh;overflow:auto;
+      }
+      .sheet h1{font-family:"Fredoka",sans-serif;font-size:2.1rem;margin:0 0 4px;line-height:1.1;}
+      .sheet h1 .accent{color:var(--coral);}
+      .sheet .tagline{font-weight:800;color:var(--ink-soft);margin:0 0 16px;}
+      .howto{text-align:left;background:var(--card-2);border:2px solid var(--line);border-radius:14px;padding:12px 16px;margin:0 0 18px;}
+      .howto li{font-weight:700;font-size:.92rem;margin:6px 0;line-height:1.45;}
+      .hero-musubi{margin:2px auto 10px;width:150px;}
+      .big-btn{
+        font-family:"Fredoka",sans-serif;font-weight:700;font-size:1.3rem;cursor:pointer;border:none;border-radius:14px;
+        background:var(--teal);color:#fff;padding:14px 34px;box-shadow:0 6px 0 var(--teal-dark);width:100%;
+      }
+      .big-btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--teal-dark);}
+      .end-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 18px;}
+      .end-stat{background:var(--card-2);border:2px solid var(--line);border-radius:14px;padding:10px;}
+      .end-stat .v{font-family:"Fredoka",sans-serif;font-size:1.7rem;font-weight:700;}
+      .end-stat .k{font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);}
+      .grade{font-family:"Fredoka",sans-serif;font-size:4.2rem;font-weight:700;color:var(--mustard);line-height:1;text-shadow:0 3px 0 rgba(0,0,0,.15);margin:2px 0 6px;}
+      .rush-banner{
+        display:none;text-align:center;font-family:"Fredoka",sans-serif;font-weight:700;font-size:1.05rem;
+        background:var(--coral);color:#fff;border-radius:12px;padding:6px;margin-top:8px;flex:none;font-size:.95rem;
+      }
+      .rush-banner.on{display:block;animation:pulse .5s ease infinite alternate;}
+
+      /* ---------- One-screen fit ---------- */
+      .station{min-height:0;}
+      @media (max-width:820px){
+        /* Stats: one single row, never wraps to two */
+        .statsbar{flex-wrap:nowrap;gap:6px;padding:6px 8px;}
+        .stat{min-width:0;}
+        .stat .label{font-size:.54rem;letter-spacing:.08em;}
+        .stat .value{font-size:1.02rem;line-height:1.1;}
+        .hearts{font-size:.92rem;gap:2px;}
+        .clock-wrap{min-width:0;}
+        .combo-pill{font-size:.7rem;padding:4px 8px;max-width:32vw;overflow:hidden;text-overflow:ellipsis;}
+        .panel{padding:9px 10px;}
+        .panel h2{font-size:.96rem;}
+        .panel .sub{display:none;}
+        .layout{gap:9px;margin-top:9px;}
+        /* Tickets: compact cards — layers read left-to-right as a bar */
+        .tickets{gap:6px;}
+        .ticket{padding:6px 8px;}
+        .ticket-head{margin-bottom:4px;}
+        .ticket-name{font-size:.8rem;}
+        .ticket-pts{font-size:.62rem;padding:1px 6px;}
+        .ticket-body{flex-direction:column;align-items:stretch;gap:4px;}
+        .mini-stack{flex-direction:row;width:auto;height:24px;align-items:stretch;padding:3px;gap:2px;}
+        .mini-layer{flex:1 1 0;height:auto;}
+        .ticket-list{display:flex;flex-wrap:wrap;gap:0 5px;font-size:.62rem;line-height:1.3;}
+        .patience{margin-top:4px;height:6px;}
+        /* Station: board is the shock absorber — it shrinks before buttons clip */
+        .board{min-height:88px;}
+        .stack-zone{width:190px;}
+        .hint{margin-top:5px;font-size:.84rem;}
+        .sear{margin-top:6px;}
+        .sear-note{font-size:.72rem;}
+        .ingredients{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;}
+        .ing-btn .key{display:none;}
+        .ing-btn{font-size:.72rem;padding:5px 3px 4px;gap:2px;}
+        .ing-btn span{white-space:nowrap;}
+        .ing-btn svg{width:28px;height:20px;}
+        .actions{margin-top:8px;gap:6px;}
+        .btn{padding:9px 8px;font-size:.85rem;white-space:normal;text-align:center;min-width:0;min-height:46px;}
+        .btn-serve{font-size:.95rem;}
+      }
+      @media (max-height:780px){
+        .panel .sub{display:none;}
+        .board{min-height:104px;}
+      }
+      @media (max-height:700px){
+        .layer.rice{height:24px;}
+        .layer.spam{height:19px;}
+        .layer.egg{height:15px;}
+        .layer.cheese{height:11px;}
+        .layer.avocado{height:13px;}
+        .layer.furikake{height:9px;}
+        .layer.sauce{height:8px;}
+      }
+      @media (max-height:640px){
+        .board{min-height:72px;}
+        .ticket{padding:6px 8px;}
+        .ticket-list{font-size:.64rem;line-height:1.25;}
+        .mini-layer{height:6px;}
+        .patience{margin-top:4px;}
+        .sear-note{display:none;}
+        .ing-btn .key{display:none;}
+        .ing-btn svg{width:28px;height:21px;}
+        .ing-btn{font-size:.74rem;padding:5px 3px 4px;}
+        .btn{padding:8px 10px;font-size:.92rem;}
+        .btn-serve{font-size:1rem;}
+        .stat .value{font-size:1.1rem;}
+        .panel h2{font-size:.95rem;}
+      }
+      @media (max-height:520px){
+        .board{min-height:40px;}
+        .stack-empty{padding:8px 6px;font-size:.8rem;}
+        .hint{font-size:.82rem;margin-top:4px;}
+        .sear{margin-top:6px;}
+        .ingredients{margin-top:7px;}
+        .actions{margin-top:7px;}
+      }
+
+      @media (prefers-reduced-motion: reduce){
+        *{animation-duration:.001s !important;transition-duration:.001s !important;}
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <!-- Stats bar -->
+      <div class="statsbar" role="region" aria-label="Game stats">
+        <div class="stat score"><span class="label">Score</span><span class="value" id="score">0</span></div>
+        <div class="stat"><span class="label">Served</span><span class="value" id="served">0</span></div>
+        <div class="stat"><span class="label">Hearts</span><span class="value" id="hearts" aria-label="Hearts remaining"></span></div>
+        <div class="clock-wrap">
+          <span class="label" style="font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);">Shift clock — <span id="clockText">2:00</span></span>
+          <div class="clock-bar"><div class="clock-fill" id="clockFill" style="width:100%"></div></div>
+        </div>
+        <div class="combo-pill" id="comboPill">Combo ×1.0</div>
+      </div>
+
+      <div class="rush-banner" id="rushBanner">🔥 RUSH HOUR — customers are extra impatient, tips are doubled!</div>
+
+      <!-- Main layout -->
+      <div class="layout">
+        <section class="panel" aria-label="Customer orders">
+          <h2>🧾 Order Tickets</h2>
+          <p class="sub">Build a musubi that matches a ticket exactly — rice on the bottom, layers in order — then wrap &amp; serve.</p>
+          <div class="tickets" id="tickets"></div>
+        </section>
+
+        <section class="panel station" aria-label="Musubi building station">
+          <h2 style="align-self:flex-start;">🍙 Build Station</h2>
+          <p class="sub" style="align-self:flex-start;">Tap ingredients to stack them. Spam timing tip: hit the green zone on the sear gauge for crispy bonus points.</p>
+
+          <div class="board">
+            <div class="stack-zone" id="stackZone">
+              <div class="nori-wrap"></div>
+              <div class="stack-empty" id="stackEmpty">Your musubi mold is empty.<br/>Start with a rice block!</div>
+            </div>
+          </div>
+
+          <p class="hint" id="hint">Tickets are coming in — pick one and start stacking.</p>
+
+          <div class="sear" aria-hidden="true">
+            <div class="sear-head"><span>Raw</span><span>🔥 Perfect sear</span><span>Burnt</span></div>
+            <div class="sear-track"><div class="sear-needle" id="searNeedle" style="left:10%"></div></div>
+            <div class="sear-note" id="searNote">The grill is hot. Add Spam when the needle is in the green!</div>
+          </div>
+
+          <div class="ingredients" id="ingredients"></div>
+
+          <div class="actions">
+            <button class="btn btn-ghost" id="undoBtn" type="button">↩ Undo layer</button>
+            <button class="btn btn-ghost" id="clearBtn" type="button">🗑 Scrap it</button>
+            <button class="btn btn-serve" id="serveBtn" type="button">🌊 Wrap in Nori &amp; Serve!</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Start overlay -->
+    <div class="overlay" id="startOverlay">
+      <div class="sheet">
+        <svg class="hero-musubi" viewBox="0 0 160 120" aria-hidden="true">
+          <rect x="18" y="52" width="124" height="52" rx="14" fill="#26443a"/>
+          <rect x="26" y="30" width="108" height="34" rx="12" fill="#fffdf6" stroke="#e6dcc4" stroke-width="3"/>
+          <rect x="26" y="14" width="108" height="24" rx="10" fill="#ef5d7a" stroke="#c23352" stroke-width="3"/>
+          <circle cx="52" cy="24" r="3" fill="#93203a" opacity=".5"/><circle cx="82" cy="20" r="3" fill="#93203a" opacity=".5"/><circle cx="110" cy="26" r="3" fill="#93203a" opacity=".5"/>
+          <rect x="66" y="30" width="28" height="74" fill="#16281f"/>
+        </svg>
+        <h1>Spam Musubi <span class="accent">Stand</span></h1>
+        <p class="tagline">The lunch rush is coming. Stack 'em, sear 'em, wrap 'em, serve 'em!</p>
+        <ul class="howto">
+          <li>🧾 <b>Match the ticket:</b> stack layers in the exact order shown, rice block first.</li>
+          <li>🔥 <b>Sear the Spam:</b> the gauge needle sweeps the grill — add Spam while it's in the green for a crispy bonus.</li>
+          <li>⏱️ <b>Beat the patience bar:</b> if a ticket's bar runs out, that customer walks and you lose a heart. Lose 3 and the shift ends.</li>
+          <li>🌊 <b>Wrap &amp; serve</b> to score. Consecutive serves build your combo multiplier — and watch out for Rush Hour in the final minute!</li>
+        </ul>
+        <button class="big-btn" id="startBtn" type="button">Start the Shift — 2 Minutes</button>
+      </div>
+    </div>
+
+    <!-- End overlay -->
+    <div class="overlay hidden" id="endOverlay">
+      <div class="sheet">
+        <h1 id="endTitle">Shift Complete!</h1>
+        <div class="grade" id="grade">A</div>
+        <p class="tagline" id="endLine">The stand is closed. Here's how the rush went:</p>
+        <div class="end-stats">
+          <div class="end-stat"><div class="v" id="endScore">0</div><div class="k">Final score</div></div>
+          <div class="end-stat"><div class="v" id="endServed">0</div><div class="k">Musubi served</div></div>
+          <div class="end-stat"><div class="v" id="endCombo">×1.0</div><div class="k">Best combo</div></div>
+          <div class="end-stat"><div class="v" id="endCrispy">0</div><div class="k">Crispy Spam bonuses</div></div>
+        </div>
+        <button class="big-btn" id="againBtn" type="button">Work Another Shift</button>
+      </div>
+    </div>
+
+    <script>
+      "use strict";
+      /* iOS webview fit: size the page to the actually-visible viewport so the
+         bottom action row (Undo / Scrap / Serve) is never pushed off-screen or
+         left behind app chrome, where taps can't reach it. */
+      function fitAppHeight(){
+        document.body.style.height = window.innerHeight + "px";
+      }
+      window.addEventListener("resize", fitAppHeight);
+      window.addEventListener("orientationchange", fitAppHeight);
+      if(window.visualViewport) window.visualViewport.addEventListener("resize", fitAppHeight);
+      fitAppHeight();
+
+      /* ================= Data ================= */
+      var ING = {
+        rice:    { name:"Rice Block", short:"Rice",    color:"#efe6cf", key:"1" },
+        spam:    { name:"Spam Slice", short:"Spam",    color:"#ef5d7a", key:"2" },
+        egg:     { name:"Tamago Egg", short:"Egg",     color:"#ffcf3f", key:"3" },
+        cheese:  { name:"Cheese",     short:"Cheese",  color:"#ff9f1c", key:"4" },
+        avocado: { name:"Avocado",    short:"Avocado", color:"#7bc950", key:"5" },
+        furikake:{ name:"Furikake",   short:"Furikake",color:"#4c7a4f", key:"6" },
+        sauce:   { name:"Teri Sauce", short:"Sauce",   color:"#7a3f21", key:"7" }
+      };
+      var FILLINGS = ["spam","egg","cheese","avocado","furikake","sauce"];
+      var ICONS = {
+        rice:'<svg viewBox="0 0 48 34"><rect x="4" y="10" width="40" height="18" rx="6" fill="#fffdf6" stroke="#d9cba6" stroke-width="2.5"/><circle cx="15" cy="17" r="1.8" fill="#c9b98f"/><circle cx="25" cy="21" r="1.8" fill="#c9b98f"/><circle cx="34" cy="16" r="1.8" fill="#c9b98f"/></svg>',
+        spam:'<svg viewBox="0 0 48 34"><rect x="4" y="9" width="40" height="17" rx="6" fill="#ef5d7a" stroke="#c23352" stroke-width="2.5"/><path d="M13 12 L20 23 M24 11 L31 24 M35 12 L41 22" stroke="#93203a" stroke-width="2.4" opacity=".55" stroke-linecap="round"/></svg>',
+        egg:'<svg viewBox="0 0 48 34"><rect x="4" y="10" width="40" height="16" rx="6" fill="#ffcf3f" stroke="#e0a81e" stroke-width="2.5"/><rect x="4" y="21" width="40" height="5" fill="#fff6da"/></svg>',
+        cheese:'<svg viewBox="0 0 48 34"><path d="M4 10 h40 v9 c-4 0-4 5-8 5 s-4-5-8-5 -4 5-8 5 -4-5-8-5 -4 4-8 3 z" fill="#ff9f1c" stroke="#dd7410" stroke-width="2.5"/></svg>',
+        avocado:'<svg viewBox="0 0 48 34"><rect x="4" y="10" width="40" height="16" rx="8" fill="#7bc950" stroke="#4f9c2e" stroke-width="2.5"/><rect x="12" y="15" width="24" height="6" rx="3" fill="#d8f0b8"/></svg>',
+        furikake:'<svg viewBox="0 0 48 34"><rect x="16" y="4" width="16" height="24" rx="4" fill="#33523a"/><rect x="19" y="1.5" width="10" height="6" rx="2" fill="#b9b9b9"/><circle cx="21" cy="14" r="1.6" fill="#a5dd7a"/><circle cx="27" cy="19" r="1.6" fill="#e8b23a"/><circle cx="22" cy="23" r="1.6" fill="#fff"/></svg>',
+        sauce:'<svg viewBox="0 0 48 34"><path d="M20 4 h8 l2 8 v14 a4 4 0 0 1-4 4 h-4 a4 4 0 0 1-4-4 V12 z" fill="#8a4b2a"/><rect x="20" y="1" width="8" height="5" rx="2" fill="#e04e2d"/><path d="M8 30 q4-4 8 0 t8 0 t8 0 t8 0" stroke="#7a3f21" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>'
+      };
+      var NAMES = ["Kai","Leila","Noa","Makoa","Aunty Pua","Uncle Boy","Hina","Keanu","Malia","Kimo","Nani","Tane"];
+
+      /* ================= State ================= */
+      var SHIFT_LEN = 120;
+      var state = null;
+      function freshState(){
+        return {
+          running:false, score:0, served:0, lost:0, combo:0, bestCombo:0,
+          crispyCount:0, timeLeft:SHIFT_LEN, elapsed:0, stack:[], orders:[],
+          orderSeq:0, rush:false, serving:false
+        };
+      }
+
+      /* ================= Audio (tiny synth) ================= */
+      var actx = null;
+      function beep(freq, dur, type, vol, when){
+        if(!actx) return;
+        try{
+          var t = actx.currentTime + (when||0);
+          var o = actx.createOscillator(), g = actx.createGain();
+          o.type = type||"sine"; o.frequency.setValueAtTime(freq, t);
+          g.gain.setValueAtTime(vol||0.12, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + (dur||0.12));
+          o.connect(g); g.connect(actx.destination);
+          o.start(t); o.stop(t + (dur||0.12) + 0.02);
+        }catch(e){}
+      }
+      function sndAdd(i){ beep(320 + i*45, 0.09, "triangle", 0.14); }
+      function sndCrispy(){ beep(880,0.1,"square",0.07); beep(1320,0.14,"square",0.06,0.07); }
+      function sndServe(){ beep(523,0.12,"triangle",0.14); beep(659,0.12,"triangle",0.14,0.09); beep(784,0.2,"triangle",0.15,0.18); }
+      function sndBad(){ beep(150,0.25,"sawtooth",0.1); }
+      function sndLose(){ beep(392,0.15,"triangle",0.13); beep(311,0.15,"triangle",0.13,0.13); beep(233,0.3,"triangle",0.13,0.26); }
+
+      /* ================= DOM ================= */
+      function $(id){ return document.getElementById(id); }
+      var stackZone=$("stackZone"), stackEmpty=$("stackEmpty"), hintEl=$("hint"),
+          ticketsEl=$("tickets"), searNote=$("searNote");
+
+      /* Build ingredient buttons */
+      var ingBtns = {};
+      (function buildButtons(){
+        var wrap = $("ingredients");
+        Object.keys(ING).forEach(function(k){
+          var b = document.createElement("button");
+          b.type="button"; b.className="ing-btn"; b.dataset.ing=k;
+          b.setAttribute("aria-label","Add "+ING[k].name);
+          b.innerHTML = ICONS[k] + "<span>"+ING[k].name+"</span><span class='key'>key "+ING[k].key+"</span>";
+          b.addEventListener("click", function(){ addLayer(k); });
+          wrap.appendChild(b); ingBtns[k]=b;
+        });
+      })();
+
+      /* ================= Orders ================= */
+      function makeOrder(){
+        state.orderSeq++;
+        var elapsed = state.elapsed;
+        var maxFill = elapsed < 30 ? 3 : (elapsed < 70 ? 4 : 5);
+        var nFill = 2 + Math.floor(Math.random() * (maxFill - 1)); /* 2..maxFill */
+        var layers = ["rice"];
+        var hasSpam = false;
+        for(var i=0;i<nFill;i++){
+          var pick = FILLINGS[Math.floor(Math.random()*FILLINGS.length)];
+          if(pick==="spam") hasSpam = true;
+          layers.push(pick);
+        }
+        if(!hasSpam){ layers[1 + Math.floor(Math.random()*nFill)] = "spam"; hasSpam = true; }
+        if(Math.random() < 0.28){ layers.push("spam"); } /* double spam chance */
+        var patience = Math.max(26, 46 - elapsed*0.16);
+        return {
+          id: state.orderSeq,
+          name: NAMES[Math.floor(Math.random()*NAMES.length)],
+          layers: layers,
+          patience: patience, maxPatience: patience,
+          fresh: true
+        };
+      }
+      function orderPoints(o){
+        return 60 + (o.layers.length-1)*25;
+      }
+      function renderTickets(){
+        ticketsEl.innerHTML = "";
+        if(!state) return;
+        for(var slot=0; slot<3; slot++){
+          var o = state.orders[slot];
+          if(!o){
+            var empty = document.createElement("div");
+            empty.className="ticket empty-slot"; empty.textContent="Next customer on the way…";
+            ticketsEl.appendChild(empty); continue;
+          }
+          var t = document.createElement("div");
+          t.className = "ticket" + (o.fresh ? " new-in" : "");
+          o.fresh = false;
+          var listHtml = o.layers.map(function(l,i){
+            return "<li>"+(i===0?"▸ ":"&nbsp;&nbsp;")+"<b>"+ING[l].short+"</b></li>";
+          }).join("");
+          var miniHtml = o.layers.map(function(l){
+            return "<div class='mini-layer' style='background:"+ING[l].color+";border:1px solid rgba(0,0,0,.18)'></div>";
+          }).join("");
+          t.innerHTML =
+            "<div class='ticket-head'><span class='ticket-name'>#"+o.id+" "+o.name+"</span>"+
+            "<span class='ticket-pts'>"+orderPoints(o)+" pts</span></div>"+
+            "<div class='ticket-body'><div class='mini-stack'>"+miniHtml+"</div>"+
+            "<ul class='ticket-list'>"+listHtml+"</ul></div>"+
+            "<div class='patience'><div class='patience-fill' data-pid='"+o.id+"' style='width:100%'></div></div>";
+          t.dataset.oid = o.id;
+          ticketsEl.appendChild(t);
+        }
+        markMatchable();
+      }
+      function markMatchable(){
+        if(!state) return;
+        var cards = ticketsEl.querySelectorAll(".ticket[data-oid]");
+        cards.forEach(function(c){
+          var o = state.orders.find(function(x){ return x && x.id == c.dataset.oid; });
+          if(o && arraysEqual(o.layers, state.stack)) c.classList.add("matchable");
+          else c.classList.remove("matchable");
+        });
+      }
+      function arraysEqual(a,b){
+        if(a.length!==b.length) return false;
+        for(var i=0;i<a.length;i++) if(a[i]!==b[i]) return false;
+        return true;
+      }
+
+      /* ================= Stack ================= */
+      function renderStack(){
+        stackZone.querySelectorAll(".layer").forEach(function(n){ n.remove(); });
+        if(state.stack.length===0){
+          stackEmpty.style.display="block";
+        } else {
+          stackEmpty.style.display="none";
+          state.stack.forEach(function(item){
+            var d = document.createElement("div");
+            d.className = "layer " + item.type + (item.crispy ? " crispy" : "");
+            d.innerHTML = "<span class='tag'>"+ING[item.type].short+(item.crispy?" ★":"")+"</span>";
+            stackZone.appendChild(d);
+          });
+        }
+        ingBtns.rice.disabled = state.stack.length>0;
+        markMatchable();
+      }
+      function setHint(msg, cls){
+        hintEl.textContent = msg;
+        hintEl.className = "hint" + (cls ? " "+cls : "");
+      }
+
+      /* Sear gauge: needle ping-pongs 0..100 over 1.5s */
+      function needlePos(now){
+        var period = 1500, t = (now % period) / period; /* 0..1 */
+        return t < 0.5 ? t*200 : (1-t)*200;
+      }
+      function searGrade(pos){
+        if(pos>=40 && pos<=60) return "crispy";
+        if(pos>=25 && pos<=75) return "good";
+        return "meh";
+      }
+
+      function addLayer(type){
+        if(!state || !state.running || state.serving) return;
+        if(type==="rice" && state.stack.length>0){ setHint("Rice only goes on the bottom — it's already down.","bad"); sndBad(); return; }
+        if(state.stack.length===0 && type!=="rice"){ setHint("Start with a rice block — every musubi needs its base.","bad"); sndBad(); shakeStack(); return; }
+        if(state.stack.length>=8){ setHint("That tower is maxed out — serve it or scrap it.","bad"); sndBad(); return; }
+        var item = { type:type, crispy:false };
+        if(type==="spam"){
+          var pos = needlePos(performance.now());
+          var g = searGrade(pos);
+          if(g==="crispy"){ item.crispy = true; searNote.textContent = "★ PERFECT SEAR! Crispy Spam bonus banked."; sndCrispy(); }
+          else if(g==="good"){ searNote.textContent = "Nice sear — golden edges."; sndAdd(state.stack.length); }
+          else { searNote.textContent = pos<25 ? "A little pale… aim for the green zone." : "Whoa, dark! Aim for the green zone."; sndAdd(state.stack.length); }
+        } else {
+          sndAdd(state.stack.length);
+        }
+        state.stack.push(item);
+        renderStack();
+        var match = state.orders.some(function(o){ return o && arraysEqual(o.layers, state.stack.map(function(s){return s.type;})); });
+        if(match) setHint("That's a perfect match — wrap it in nori and serve! 🌊","good");
+      }
+
+      function shakeStack(){ stackZone.classList.remove("shake"); void stackZone.offsetWidth; stackZone.classList.add("shake"); }
+
+      $("undoBtn").addEventListener("click", function(){
+        if(!state || !state.running || state.serving) return;
+        if(state.stack.length){ state.stack.pop(); renderStack(); setHint("Layer removed."); beep(240,0.08,"triangle",0.1); }
+      });
+      $("clearBtn").addEventListener("click", function(){
+        if(!state || !state.running || state.serving) return;
+        if(state.stack.length){ state.stack=[]; renderStack(); setHint("Scrapped. Fresh mold, fresh start."); sndBad(); }
+      });
+
+      /* ================= Serve ================= */
+      $("serveBtn").addEventListener("click", function(){
+        if(!state || !state.running || state.serving) return;
+        if(state.stack.length===0){ setHint("Nothing to serve yet — stack something first!","bad"); return; }
+        var types = state.stack.map(function(s){ return s.type; });
+        var idx = -1, order = null;
+        for(var i=0;i<state.orders.length;i++){
+          if(state.orders[i] && arraysEqual(state.orders[i].layers, types)){ idx=i; order=state.orders[i]; break; }
+        }
+        if(!order){
+          /* Build a helpful hint from the closest ticket */
+          var best=null, bestScore=-1;
+          state.orders.forEach(function(o){
+            if(!o) return;
+            var s=0; for(var j=0;j<Math.min(o.layers.length, types.length); j++){ if(o.layers[j]===types[j]) s++; else break; }
+            if(s>bestScore){ bestScore=s; best=o; }
+          });
+          shakeStack(); sndBad();
+          if(best){
+            if(types.length < best.layers.length)
+              setHint("Ticket #"+best.id+" still needs "+ING[best.layers[types.length]].name+" next.","bad");
+            else if(types.length > best.layers.length)
+              setHint("Too many layers for ticket #"+best.id+" — undo or scrap it.","bad");
+            else
+              setHint("Ticket #"+best.id+" wants "+ING[best.layers[bestScore]].name+" where you put "+ING[types[bestScore]].name+".","bad");
+          } else setHint("No ticket matches that stack.","bad");
+          return;
+        }
+        /* Success! */
+        state.serving = true;
+        var crispyBonus = state.stack.reduce(function(a,s){ return a + (s.crispy?15:0); }, 0);
+        if(crispyBonus>0) state.crispyCount += state.stack.filter(function(s){return s.crispy;}).length;
+        var patienceBonus = Math.round(40 * (order.patience / order.maxPatience));
+        var mult = 1 + Math.min(state.combo,10)*0.1;
+        var pts = Math.round((orderPoints(order) + crispyBonus + patienceBonus) * mult * (state.rush?1:1));
+        if(state.rush) pts = Math.round(pts * 1.25);
+        state.score += pts;
+        state.served++;
+        state.combo++; state.bestCombo = Math.max(state.bestCombo, state.combo);
+        state.orders[idx] = null;
+        sndServe();
+        stackZone.classList.add("served");
+        setHint(order.name+" loved it! +"+pts+" pts"+(crispyBonus?" (crispy bonus +"+crispyBonus+")":""), "good");
+        scorePop("+"+pts);
+        setTimeout(function(){
+          stackZone.classList.add("fly");
+          setTimeout(function(){
+            stackZone.classList.remove("fly","served");
+            state.stack = []; state.serving=false;
+            state.orders[idx] = makeOrder();
+            renderStack(); renderTickets(); updateStats();
+          }, 420);
+        }, 300);
+        renderTickets(); updateStats();
+      });
+
+      function scorePop(text){
+        var r = stackZone.getBoundingClientRect();
+        var el = document.createElement("div");
+        el.className="pop"; el.textContent=text;
+        el.style.left = (r.left + r.width/2 - 30) + "px";
+        el.style.top = (r.top + 20) + "px";
+        document.body.appendChild(el);
+        setTimeout(function(){ el.remove(); }, 1000);
+      }
+
+      /* ================= Stats / loop ================= */
+      function updateStats(){
+        $("score").textContent = state.score;
+        $("served").textContent = state.served;
+        var hearts = "";
+        for(var i=0;i<3;i++) hearts += "<span class='"+(i < 3-state.lost ? "" : "lost")+"'>❤️</span>";
+        $("hearts").innerHTML = hearts;
+        var pill = $("comboPill");
+        var mult = 1 + Math.min(state.combo,10)*0.1;
+        pill.textContent = state.combo>0 ? "🔥 Combo ×"+mult.toFixed(1)+" ("+state.combo+" streak)" : "Combo ×1.0";
+        pill.classList.toggle("hot", state.combo>=3);
+        var mm = Math.floor(Math.max(0,state.timeLeft)/60), ss = Math.floor(Math.max(0,state.timeLeft)%60);
+        $("clockText").textContent = mm+":"+(ss<10?"0":"")+ss;
+        var fill = $("clockFill");
+        fill.style.width = (Math.max(0,state.timeLeft)/SHIFT_LEN*100)+"%";
+        fill.classList.toggle("low", state.timeLeft<=20);
+      }
+
+      var lastTick = null;
+      function loop(ts){
+        if(!state || !state.running) return;
+        if(lastTick===null) lastTick = ts;
+        var dt = Math.min(0.25, (ts-lastTick)/1000); lastTick = ts;
+        state.timeLeft -= dt; state.elapsed += dt;
+
+        /* Sear needle */
+        $("searNeedle").style.left = needlePos(ts) + "%";
+
+        /* Rush hour at final 60s */
+        if(!state.rush && state.timeLeft<=60 && state.timeLeft>0){
+          state.rush = true; $("rushBanner").classList.add("on");
+          setHint("🔥 RUSH HOUR! Bigger tips, faster tempers!","bad");
+        }
+
+        /* Patience */
+        var drain = dt * (state.rush ? 1.45 : 1);
+        var changed = false;
+        for(var i=0;i<state.orders.length;i++){
+          var o = state.orders[i];
+          if(!o) continue;
+          o.patience -= drain;
+          var bar = ticketsEl.querySelector("[data-pid='"+o.id+"']");
+          if(bar){
+            var frac = Math.max(0, o.patience/o.maxPatience);
+            bar.style.width = (frac*100)+"%";
+            bar.className = "patience-fill" + (frac<0.25 ? " danger" : (frac<0.5 ? " warn" : ""));
+          }
+          if(o.patience<=0){
+            state.orders[i] = null; state.lost++; state.combo = 0;
+            sndLose(); changed = true;
+            setHint(o.name+" walked away hungry… that's a lost heart. 💔","bad");
+            if(state.lost>=3){ endShift(true); return; }
+            state.orders[i] = makeOrder();
+          }
+        }
+        if(changed){ renderTickets(); }
+        updateStats();
+        if(state.timeLeft<=0){ endShift(false); return; }
+        requestAnimationFrame(loop);
+      }
+
+      /* ================= Game flow ================= */
+      function startGame(){
+        if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+        if(actx && actx.state==="suspended") actx.resume();
+        state = freshState();
+        state.running = true;
+        state.orders = [makeOrder(), makeOrder(), makeOrder()];
+        $("startOverlay").classList.add("hidden");
+        $("endOverlay").classList.add("hidden");
+        $("rushBanner").classList.remove("on");
+        lastTick = null;
+        renderStack(); renderTickets(); updateStats();
+        setHint("First tickets are in — rice first, then stack in order!");
+        requestAnimationFrame(loop);
+      }
+      function endShift(outOfHearts){
+        state.running = false;
+        $("rushBanner").classList.remove("on");
+        var s = state.score;
+        var grade = s>=2600 ? "S" : s>=1900 ? "A" : s>=1200 ? "B" : s>=600 ? "C" : "D";
+        $("endTitle").textContent = outOfHearts ? "Three Walk-Outs — Shift Over!" : "Shift Complete!";
+        $("grade").textContent = grade;
+        $("endLine").textContent = outOfHearts
+          ? "Too many customers left hungry, so the boss closed the stand early. Here's the damage:"
+          : "The stand is closed and the grill is cooling. Here's how the rush went:";
+        $("endScore").textContent = s;
+        $("endServed").textContent = state.served;
+        $("endCombo").textContent = "×"+(1+Math.min(state.bestCombo,10)*0.1).toFixed(1);
+        $("endCrispy").textContent = state.crispyCount;
+        $("endOverlay").classList.remove("hidden");
+      }
+      $("startBtn").addEventListener("click", startGame);
+      $("againBtn").addEventListener("click", startGame);
+
+      /* Keyboard play */
+      document.addEventListener("keydown", function(e){
+        if(!state || !state.running) return;
+        var map = {"1":"rice","2":"spam","3":"egg","4":"cheese","5":"avocado","6":"furikake","7":"sauce"};
+        if(map[e.key]) addLayer(map[e.key]);
+        else if(e.key==="Backspace"){ e.preventDefault(); $("undoBtn").click(); }
+        else if(e.key==="Enter" || e.key===" "){ if(e.target.tagName!=="BUTTON"){ e.preventDefault(); $("serveBtn").click(); } }
+      });
+
+      /* Pre-game render of hearts */
+      state = freshState();
+      updateStats();
+      renderTickets();
+    </script>
+  </body>
+</html>
