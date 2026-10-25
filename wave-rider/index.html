@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Wave Rider</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,800;9..40,900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fdf3d8; --ink:#12212b; --card:#fffdf4; --muted:#5a6b74;
+    --teal:#0aa79b; --teal-deep:#0077a8; --coral:#ff5a3c; --sun:#ffb81c; --line:#12212b;
+    --shadow: 6px 6px 0 var(--line);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0d202b; --ink:#f2ead2; --card:#16303f; --muted:#a8bcc4; --line:#f2ead2; --shadow:6px 6px 0 rgba(0,0,0,.55); }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"DM Sans",system-ui,sans-serif; background:var(--bg); color:var(--ink);
+    background-image: radial-gradient(var(--muted) .7px, transparent .7px); background-size:22px 22px;
+    min-height:100vh;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:18px 16px 34px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+  h1{font-family:"Anton",sans-serif;font-size:clamp(38px,7vw,64px);line-height:.9;margin:0;letter-spacing:.5px;text-transform:uppercase}
+  h1 .accent{color:var(--coral)}
+  .tagline{font-weight:700;color:var(--muted);margin:6px 0 0;font-size:15px}
+  .best-pill{border:2.5px solid var(--line);background:var(--sun);color:#12212b;border-radius:999px;padding:8px 14px;font-weight:900;font-size:14px;box-shadow:3px 3px 0 var(--line);white-space:nowrap}
+  .hud{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  .stat{border:2.5px solid var(--line);background:var(--card);border-radius:12px;padding:8px 12px;box-shadow:3px 3px 0 var(--line)}
+  .stat .label{font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .stat .value{font-family:"Anton",sans-serif;font-size:26px;line-height:1.05}
+  .stat .value small{font-size:14px}
+  .shell{position:relative;border:3px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);background:#8ed8e8}
+  canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;touch-action:none}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;background:rgba(10,32,43,.55);backdrop-filter:blur(2px);color:#fff}
+  .overlay.hidden{display:none}
+  .overlay h2{font-family:"Anton",sans-serif;font-size:clamp(32px,6vw,56px);margin:0 0 6px;text-transform:uppercase;line-height:.95;text-shadow:3px 3px 0 rgba(0,0,0,.35)}
+  .overlay p{max-width:520px;margin:4px 0 14px;font-weight:600;font-size:15.5px;line-height:1.45}
+  .overlay .keys{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:16px}
+  .keychip{background:#fff;color:#12212b;border-radius:8px;padding:5px 10px;font-weight:900;font-size:13px;border:2px solid #12212b;box-shadow:2px 2px 0 #12212b}
+  .bigbtn{font-family:"Anton",sans-serif;font-size:21px;letter-spacing:.04em;background:var(--coral);color:#fff;border:3px solid #12212b;border-radius:999px;padding:12px 30px;cursor:pointer;box-shadow:4px 4px 0 #12212b;text-transform:uppercase}
+  .bigbtn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 #12212b}
+  .finalstats{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:16px}
+  .finalstats div{background:#fff;color:#12212b;border:2px solid #12212b;border-radius:10px;padding:6px 14px;font-weight:900;box-shadow:2px 2px 0 #12212b}
+  .balance-wrap{margin-top:14px;border:2.5px solid var(--line);background:var(--card);border-radius:12px;padding:10px 14px 12px;box-shadow:3px 3px 0 var(--line)}
+  .balance-head{display:flex;justify-content:space-between;align-items:baseline}
+  .balance-head .t{font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .balance-head .warn{font-weight:900;font-size:13px;color:var(--coral);min-height:16px}
+  .meter{position:relative;height:20px;border:2.5px solid var(--line);border-radius:999px;overflow:hidden;margin-top:6px;
+    background:linear-gradient(90deg,#ff5a3c 0%,#ffb81c 22%,#37c978 40%,#37c978 60%,#ffb81c 78%,#ff5a3c 100%)}
+  .needle{position:absolute;top:-2px;bottom:-2px;width:10px;margin-left:-5px;background:#12212b;border:2px solid #fff;border-radius:4px;left:50%;transition:none}
+  .controls{display:grid;grid-template-columns:1fr 1fr 1.2fr 1fr 1fr 1fr;gap:10px;margin-top:12px}
+  .cbtn{border:2.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:12px 6px;cursor:pointer;box-shadow:3px 3px 0 var(--line);font-family:"DM Sans",sans-serif;text-align:center;user-select:none;-webkit-user-select:none;touch-action:none}
+  .cbtn:active,.cbtn.held{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--line);background:var(--sun);color:#12212b}
+  .cbtn .ic{font-size:21px;display:block;line-height:1}
+  .cbtn .lb{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;display:block;margin-top:3px}
+  .cbtn.jump{background:var(--coral);color:#fff}
+  .cbtn.trick{background:var(--teal);color:#fff}
+  .cbtn.trick:active,.cbtn.trick.held{background:var(--sun);color:#12212b}
+  .howto{margin-top:16px;border:2.5px solid var(--line);background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:16px 18px}
+  .howto h3{font-family:"Anton",sans-serif;margin:0 0 10px;font-size:20px;text-transform:uppercase;letter-spacing:.03em}
+  .howto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .howto-grid div p{margin:4px 0 0;color:var(--muted);font-weight:600;font-size:14px;line-height:1.45}
+  .howto-grid div b{font-size:14.5px}
+  kbd{background:var(--ink);color:var(--bg);border-radius:5px;padding:1px 7px;font-family:"DM Sans",sans-serif;font-weight:800;font-size:12.5px}
+  .toast{position:absolute;left:50%;top:16%;transform:translateX(-50%);font-family:"Anton",sans-serif;font-size:clamp(20px,4vw,34px);color:#fff;text-shadow:2.5px 2.5px 0 rgba(0,0,0,.4);pointer-events:none;opacity:0;text-transform:uppercase;white-space:nowrap}
+  .toast.show{animation:pop 1.1s ease forwards}
+  @keyframes pop{0%{opacity:0;transform:translateX(-50%) scale(.7)}15%{opacity:1;transform:translateX(-50%) scale(1.08)}30%{transform:translateX(-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-14px)}}
+  @media (max-width:640px){
+    .hud{grid-template-columns:repeat(2,1fr)}
+    .controls{grid-template-columns:repeat(3,1fr)}
+    .howto-grid{grid-template-columns:1fr}
+    .wrap{padding:12px 10px 26px}
+    .overlay{padding:10px 12px}
+    .overlay h2{font-size:25px;margin-bottom:2px}
+    .overlay p{display:none}
+    .overlay .keys{display:none}
+    .bigbtn{font-size:16px;padding:9px 22px}
+    .finalstats{gap:6px;margin-bottom:10px}
+    .finalstats div{padding:4px 9px;font-size:13px}
+  }
+  @media (prefers-reduced-motion: reduce){ .toast.show{animation:none;opacity:1} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Wave <span class="accent">Rider</span></h1>
+      <p class="tagline">Ride the endless wave. Keep your balance, launch off the lip, land your tricks clean.</p>
+    </div>
+    <div class="best-pill">🏆 Best: <span id="bestPill">0</span> pts</div>
+  </header>
+
+  <div class="hud">
+    <div class="stat"><div class="label">Score</div><div class="value" id="hudScore">0</div></div>
+    <div class="stat"><div class="label">Distance</div><div class="value" id="hudDist">0<small> m</small></div></div>
+    <div class="stat"><div class="label">Speed</div><div class="value" id="hudSpeed">0<small> kn</small></div></div>
+    <div class="stat"><div class="label">Combo</div><div class="value" id="hudCombo">×1</div></div>
+  </div>
+
+  <div class="shell" id="shell">
+    <canvas id="game" width="960" height="540"></canvas>
+    <div class="toast" id="toast"></div>
+
+    <div class="overlay" id="startOverlay">
+      <h2>Ready to drop in?</h2>
+      <p>Lean to stay balanced on the moving wave — if the needle pins into the red, you wipe out. Hit <b>Jump</b> at the crest to catch air, stack tricks with <b>J / K / L</b>, and land before your trick finishes or it's a yard sale.</p>
+      <div class="keys">
+        <span class="keychip">◀ ▶ or A / D — Lean</span>
+        <span class="keychip">SPACE — Jump</span>
+        <span class="keychip">J Grab · K Spin · L Flip</span>
+      </div>
+      <button class="bigbtn" id="startBtn">▶ Start surfing</button>
+    </div>
+
+    <div class="overlay hidden" id="overOverlay">
+      <h2 id="wipeTitle">Wipeout! 🌊</h2>
+      <p id="wipeMsg">The wave won that round.</p>
+      <div class="finalstats">
+        <div>Score: <span id="finalScore">0</span></div>
+        <div>Distance: <span id="finalDist">0</span> m</div>
+        <div>Best trick: <span id="finalTrick">—</span></div>
+      </div>
+      <button class="bigbtn" id="againBtn">↻ Paddle back out</button>
+    </div>
+  </div>
+
+  <div class="balance-wrap">
+    <div class="balance-head"><span class="t">⚖ Balance — keep the needle in the green</span><span class="warn" id="balanceWarn"></span></div>
+    <div class="meter"><div class="needle" id="needle"></div></div>
+  </div>
+
+  <div class="controls">
+    <button class="cbtn" id="btnLeft"><span class="ic">◀</span><span class="lb">Lean back</span></button>
+    <button class="cbtn" id="btnRight"><span class="ic">▶</span><span class="lb">Lean fwd</span></button>
+    <button class="cbtn jump" id="btnJump"><span class="ic">⬆</span><span class="lb">Jump</span></button>
+    <button class="cbtn trick" id="btnGrab"><span class="ic">✋</span><span class="lb">Grab · J</span></button>
+    <button class="cbtn trick" id="btnSpin"><span class="ic">🌀</span><span class="lb">Spin · K</span></button>
+    <button class="cbtn trick" id="btnFlip"><span class="ic">🔄</span><span class="lb">Flip · L</span></button>
+  </div>
+
+  <div class="howto">
+    <h3>How to play</h3>
+    <div class="howto-grid">
+      <div><b>🏄 Ride &amp; balance</b><p>Your surfer rides automatically. Use <kbd>◀</kbd> <kbd>▶</kbd> or <kbd>A</kbd> <kbd>D</kbd> to fight the wave's pull and the wind gusts. Pin the needle in the red too long and you wipe out.</p></div>
+      <div><b>🚀 Catch air</b><p>Press <kbd>Space</kbd> to jump — bigger at the crest of a wave. While airborne, chain tricks: <kbd>J</kbd> Indy Grab (120), <kbd>K</kbd> 360 Shove-It (220), <kbd>L</kbd> Backflip (350).</p></div>
+      <div><b>⭐ Score big</b><p>Land with your trick finished and a steady needle to bank points × your combo. Grab floating stars for +50. Every metre ridden adds to your score — how far can you go?</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var W = 960, H = 540;
+
+  var hudScore = document.getElementById('hudScore');
+  var hudDist = document.getElementById('hudDist');
+  var hudSpeed = document.getElementById('hudSpeed');
+  var hudCombo = document.getElementById('hudCombo');
+  var bestPill = document.getElementById('bestPill');
+  var needle = document.getElementById('needle');
+  var balanceWarn = document.getElementById('balanceWarn');
+  var toast = document.getElementById('toast');
+  var startOverlay = document.getElementById('startOverlay');
+  var overOverlay = document.getElementById('overOverlay');
+
+  // ---------- audio (tiny synth, created on first tap) ----------
+  var AC = null;
+  function audio(){ if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC && AC.state==='suspended') AC.resume(); return AC; }
+  function beep(freq, dur, type, vol, slideTo){
+    var ac = audio(); if(!ac) return;
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = type||'sine'; o.frequency.setValueAtTime(freq, ac.currentTime);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, ac.currentTime+dur);
+    g.gain.setValueAtTime(vol||0.12, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+dur);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+dur);
+  }
+  function splashSound(){ beep(300, 0.35, 'sawtooth', 0.08, 60); beep(900, 0.2, 'sine', 0.05, 200); }
+
+  // ---------- wave shape ----------
+  function waveY(wx){
+    return 372
+      + 46 * Math.sin(wx * 0.008)
+      + 26 * Math.sin(wx * 0.0031 + 1.3)
+      + 13 * Math.sin(wx * 0.016 + 0.5);
+  }
+  function waveSlope(wx){
+    var d = 4;
+    return Math.atan2(waveY(wx+d) - waveY(wx-d), d*2);
+  }
+
+  // ---------- game state ----------
+  var state = 'menu'; // menu | playing | falling | over
+  var scroll, speed, score, best = 0, combo, airTricks, pendingPts;
+  var balance, balanceVel, unstableTime, gustTimer, gustForce;
+  var airborne, sy, vy, flipRot, flipVel, spinRot;
+  var trick = null; // {name, pts, t, dur, kind}
+  var bestTrickName, bestTrickPts;
+  var particles = [], floaters = [], stars = [], clouds = [];
+  var frame = 0, fallTimer = 0, shake = 0;
+  var SX = 270; // surfer screen x
+
+  var TRICKS = {
+    grab: { name:'INDY GRAB', pts:120, dur:22 },
+    spin: { name:'360 SHOVE-IT', pts:220, dur:32 },
+    flip: { name:'BACKFLIP', pts:350, dur:40 }
+  };
+
+  for (var c=0;c<7;c++) clouds.push({ x: Math.random()*W, y: 24+Math.random()*110, s: 0.6+Math.random()*0.9, v: 0.2+Math.random()*0.3 });
+
+  function reset(){
+    scroll = 0; speed = 5.2; score = 0; combo = 1;
+    airTricks = 0; pendingPts = 0;
+    balance = 0; balanceVel = 0; unstableTime = 0; gustTimer = 240; gustForce = 0;
+    airborne = false; sy = waveY(SX); vy = 0; flipRot = 0; flipVel = 0; spinRot = 0;
+    trick = null; bestTrickName = '—'; bestTrickPts = 0;
+    particles = []; floaters = []; stars = []; frame = 0; fallTimer = 0; shake = 0;
+    spawnStar(true);
+  }
+
+  function spawnStar(first){
+    var ahead = scroll + W + 100 + Math.random()*500;
+    stars.push({ wx: ahead, off: 120 + Math.random()*110, taken:false });
+    if (first){ stars.push({ wx: scroll + 700, off: 150, taken:false }); }
+  }
+
+  function showToast(txt, color){
+    toast.textContent = txt;
+    toast.style.color = color || '#fff';
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+  }
+
+  function addFloater(x, y, txt, color){
+    floaters.push({ x:x, y:y, txt:txt, color:color||'#fff', life:55 });
+  }
+
+  function spray(x, y, n, power){
+    for (var i=0;i<n;i++){
+      particles.push({ x:x, y:y, vx:(Math.random()-0.7)*(power||3), vy:-Math.random()*4-1, life:22+Math.random()*18, r:1.5+Math.random()*3 });
+    }
+  }
+
+  // ---------- input ----------
+  var lean = 0; // -1 left, +1 right
+  var keys = {};
+  function setLeanFromKeys(){
+    lean = 0;
+    if (keys.left) lean -= 1;
+    if (keys.right) lean += 1;
+  }
+  window.addEventListener('keydown', function(e){
+    if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].indexOf(e.code) >= 0) e.preventDefault();
+    if (e.repeat) return;
+    if (e.code==='ArrowLeft' || e.code==='KeyA') keys.left = true;
+    if (e.code==='ArrowRight' || e.code==='KeyD') keys.right = true;
+    setLeanFromKeys();
+    if (e.code==='Space' || e.code==='ArrowUp' || e.code==='KeyW'){
+      if (state==='menu') startGame();
+      else if (state==='over') startGame();
+      else doJump();
+    }
+    if (e.code==='KeyJ') doTrick('grab');
+    if (e.code==='KeyK') doTrick('spin');
+    if (e.code==='KeyL') doTrick('flip');
+    if (e.code==='Enter'){ if (state!=='playing' && state!=='falling') startGame(); }
+  });
+  window.addEventListener('keyup', function(e){
+    if (e.code==='ArrowLeft' || e.code==='KeyA') keys.left = false;
+    if (e.code==='ArrowRight' || e.code==='KeyD') keys.right = false;
+    setLeanFromKeys();
+  });
+
+  function holdButton(el, on, off){
+    function dn(e){ e.preventDefault(); audio(); el.classList.add('held'); on(); }
+    function up(e){ if(e) e.preventDefault(); el.classList.remove('held'); if(off) off(); }
+    el.addEventListener('pointerdown', dn);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointerleave', up);
+    el.addEventListener('pointercancel', up);
+  }
+  holdButton(document.getElementById('btnLeft'), function(){ keys.left = true; setLeanFromKeys(); }, function(){ keys.left = false; setLeanFromKeys(); });
+  holdButton(document.getElementById('btnRight'), function(){ keys.right = true; setLeanFromKeys(); }, function(){ keys.right = false; setLeanFromKeys(); });
+  holdButton(document.getElementById('btnJump'), function(){ if(state==='playing') doJump(); });
+  holdButton(document.getElementById('btnGrab'), function(){ doTrick('grab'); });
+  holdButton(document.getElementById('btnSpin'), function(){ doTrick('spin'); });
+  holdButton(document.getElementById('btnFlip'), function(){ doTrick('flip'); });
+
+  document.getElementById('startBtn').addEventListener('click', function(){ audio(); startGame(); });
+  document.getElementById('againBtn').addEventListener('click', function(){ audio(); startGame(); });
+
+  // ---------- actions ----------
+  function startGame(){
+    reset();
+    state = 'playing';
+    startOverlay.classList.add('hidden');
+    overOverlay.classList.add('hidden');
+    showToast('DROP IN! 🏄', '#ffe066');
+  }
+
+  function doJump(){
+    if (state!=='playing' || airborne) return;
+    var crestBoost = Math.max(0, (392 - waveY(scroll+SX)) / 46); // higher on the wave face = bigger air
+    vy = -(12.5 + crestBoost*2.2 + speed*0.18);
+    airborne = true;
+    airTricks = 0; pendingPts = 0;
+    spray(SX, sy, 12, 3);
+    beep(500, 0.18, 'sine', 0.07, 900);
+  }
+
+  function doTrick(kind){
+    if (state!=='playing' || !airborne || trick) return;
+    var def = TRICKS[kind];
+    trick = { kind:kind, name:def.name, pts:def.pts, t:0, dur:def.dur };
+    if (kind==='flip'){ flipVel = (Math.PI*2) / def.dur; }
+    beep(700, 0.12, 'triangle', 0.08, 1100);
+  }
+
+  function wipeout(reason){
+    if (state!=='playing') return;
+    state = 'falling'; fallTimer = 0;
+    splashSound(); shake = 10;
+    spray(SX, waveY(scroll+SX), 46, 5.5);
+    document.getElementById('wipeTitle').textContent = 'Wipeout! 🌊';
+    document.getElementById('wipeMsg').textContent = reason;
+  }
+
+  var WIPE_REASONS = {
+    balance: 'You leaned too far and the wave took you under. Keep that needle centred!',
+    trick: 'You landed mid-trick — finish the move before you touch down!',
+    flip: 'You came down upside-down. Time the backflip so you land board-first!'
+  };
+
+  // ---------- update ----------
+  function update(){
+    frame++;
+    // clouds always drift
+    for (var i=0;i<clouds.length;i++){ clouds[i].x -= clouds[i].v; if (clouds[i].x < -130) { clouds[i].x = W+30; clouds[i].y = 24+Math.random()*110; } }
+
+    if (state==='falling'){
+      fallTimer++;
+      updateParticles();
+      if (fallTimer===55){
+        state = 'over';
+        if (score > best){ best = Math.floor(score); bestPill.textContent = best; }
+        document.getElementById('finalScore').textContent = Math.floor(score);
+        document.getElementById('finalDist').textContent = Math.floor(scroll/18);
+        document.getElementById('finalTrick').textContent = bestTrickPts ? (bestTrickName + ' (' + bestTrickPts + ')') : '—';
+        overOverlay.classList.remove('hidden');
+      }
+      return;
+    }
+    if (state!=='playing'){ updateParticles(); return; }
+
+    speed = Math.min(11.5, speed + 0.0016);
+    scroll += speed;
+    var wx = scroll + SX;
+    var groundY = waveY(wx);
+    var slope = waveSlope(wx);
+
+    // --- gusts ---
+    gustTimer--;
+    if (gustTimer <= 0){ gustForce = (Math.random()<0.5?-1:1) * (0.16 + Math.random()*0.20); gustTimer = 200 + Math.random()*260; if (Math.abs(gustForce)>0.24) showToast('💨 GUST!', '#ffe066'); }
+    if (gustTimer < 130) gustForce *= 0.985; else gustForce = 0;
+
+    // --- balance physics ---
+    var difficulty = 1 + Math.min(1.2, scroll/9000);
+    balanceVel += slope * 0.055 * difficulty;         // wave face pulls you
+    balanceVel += gustForce * 0.14;                    // wind
+    balanceVel += lean * 0.42;                         // player correction
+    balanceVel += -balance * 0.0016;                   // gentle spring to centre
+    balanceVel *= 0.90;
+    balance += balanceVel;
+    if (balance > 70) { balance = 70; balanceVel = 0; }
+    if (balance < -70) { balance = -70; balanceVel = 0; }
+
+    if (!airborne){
+      sy = groundY;
+      // carve spray on steep faces
+      if (Math.abs(slope) > 0.28 && frame % 3 === 0) spray(SX-16, sy+2, 2, 2);
+      if (Math.abs(balance) > 52){
+        unstableTime++;
+        if (unstableTime > 46){ wipeout(WIPE_REASONS.balance); return; }
+      } else {
+        unstableTime = Math.max(0, unstableTime - 2);
+      }
+      score += speed * 0.06;
+    } else {
+      // --- airborne ---
+      vy += 0.55;
+      sy += vy;
+      if (trick){
+        trick.t++;
+        if (trick.kind==='flip') flipRot += flipVel;
+        if (trick.kind==='spin') spinRot += (Math.PI*2)/trick.dur;
+        if (trick.t >= trick.dur){
+          airTricks++;
+          pendingPts += trick.pts;
+          if (trick.pts > bestTrickPts){ bestTrickPts = trick.pts; bestTrickName = trick.name; }
+          addFloater(SX, sy-90, trick.name + ' +' + trick.pts, '#ffe066');
+          beep(880, 0.15, 'triangle', 0.09, 1320);
+          trick = null; flipVel = 0;
+        }
+      }
+      if (sy >= groundY && vy > 0){
+        // landing checks
+        var flipOff = Math.abs(((flipRot % (Math.PI*2)) + Math.PI*2) % (Math.PI*2));
+        if (trick){ wipeout(WIPE_REASONS.trick); return; }
+        if (flipOff > 0.7 && flipOff < Math.PI*2 - 0.7){ wipeout(WIPE_REASONS.flip); return; }
+        if (Math.abs(balance) > 55){ wipeout(WIPE_REASONS.balance); return; }
+        // clean landing!
+        airborne = false; sy = groundY; flipRot = 0; spinRot = 0;
+        spray(SX, sy, 20, 4);
+        beep(420, 0.14, 'sine', 0.08, 640);
+        if (airTricks > 0){
+          combo = Math.min(8, 1 + airTricks);
+          var banked = pendingPts * combo;
+          score += banked;
+          showToast(airTricks + ' TRICK' + (airTricks>1?'S':'') + ' — +' + banked + (combo>1 ? '  ×'+combo : ''), '#7CFC9A');
+          combo = Math.min(8, combo + 0); // shown until next air resets below
+          setTimeout(function(){}, 0);
+        }
+        pendingPts = 0; airTricks = 0;
+      }
+    }
+    if (!airborne) combo = Math.max(1, combo); // combo persists as last-air multiplier display
+
+    // --- stars ---
+    for (var s=stars.length-1; s>=0; s--){
+      var st = stars[s];
+      var stx = st.wx - scroll;
+      if (!st.taken && Math.abs(stx - SX) < 34 && Math.abs((waveY(st.wx)-st.off) - sy) < 46){
+        st.taken = true; score += 50;
+        addFloater(SX, sy-70, '⭐ +50', '#ffe066');
+        beep(1200, 0.12, 'sine', 0.08, 1600);
+        spray(SX, sy-30, 8, 2);
+      }
+      if (stx < -60){ stars.splice(s,1); }
+    }
+    if (stars.length < 2 && Math.random() < 0.006) spawnStar(false);
+
+    updateParticles();
+    updateHUD();
+  }
+
+  function updateParticles(){
+    for (var i=particles.length-1;i>=0;i--){
+      var p = particles[i];
+      p.x += p.vx; p.y += p.vy; p.vy += 0.25; p.life--;
+      if (p.life<=0) particles.splice(i,1);
+    }
+    for (var j=floaters.length-1;j>=0;j--){
+      floaters[j].y -= 0.9; floaters[j].life--;
+      if (floaters[j].life<=0) floaters.splice(j,1);
+    }
+    if (shake>0) shake *= 0.88; if (shake<0.3) shake = 0;
+  }
+
+  function updateHUD(){
+    hudScore.textContent = Math.floor(score);
+    hudDist.innerHTML = Math.floor(scroll/18) + '<small> m</small>';
+    hudSpeed.innerHTML = Math.round(speed*2.4) + '<small> kn</small>';
+    hudCombo.textContent = '×' + (airborne && airTricks>0 ? (1+airTricks) : combo);
+    var pct = 50 + (balance/70)*50;
+    needle.style.left = pct + '%';
+    balanceWarn.textContent = (!airborne && Math.abs(balance) > 52) ? '⚠ WIPEOUT INCOMING — LEAN BACK!' : (Math.abs(gustForce)>0.05 ? '💨 Gust pushing you!' : '');
+    balanceWarn.style.color = (!airborne && Math.abs(balance) > 52) ? '#ff5a3c' : '#b07d10';
+  }
+
+  // ---------- drawing ----------
+  function draw(){
+    ctx.save();
+    if (shake>0) ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+
+    // sky
+    var sky = ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#79d2e8'); sky.addColorStop(0.55,'#cdeeb9'); sky.addColorStop(0.72,'#fdeec2'); sky.addColorStop(1,'#fdeec2');
+    ctx.fillStyle = sky; ctx.fillRect(-14,-14,W+28,H+28);
+
+    // sun
+    ctx.fillStyle = '#ffb81c';
+    ctx.beginPath(); ctx.arc(822, 86, 40, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffd75e';
+    ctx.beginPath(); ctx.arc(822, 86, 30, 0, Math.PI*2); ctx.fill();
+
+    // clouds
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    for (var i=0;i<clouds.length;i++){
+      var cl = clouds[i];
+      ctx.beginPath();
+      ctx.ellipse(cl.x, cl.y, 44*cl.s, 15*cl.s, 0, 0, Math.PI*2);
+      ctx.ellipse(cl.x+30*cl.s, cl.y+4*cl.s, 32*cl.s, 12*cl.s, 0, 0, Math.PI*2);
+      ctx.ellipse(cl.x-32*cl.s, cl.y+5*cl.s, 28*cl.s, 11*cl.s, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // distant island (parallax)
+    var ix = W - ((scroll*0.15) % (W+340)) + 170;
+    ctx.fillStyle = '#58b368';
+    ctx.beginPath(); ctx.ellipse(ix, 388, 130, 30, 0, Math.PI, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#2f7a3e'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(ix+30, 366); ctx.quadraticCurveTo(ix+38, 330, ix+58, 322); ctx.stroke();
+    ctx.fillStyle = '#2f7a3e';
+    ctx.beginPath(); ctx.ellipse(ix+62, 320, 20, 8, -0.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(ix+56, 318, 20, 8, 0.6, 0, Math.PI*2); ctx.fill();
+
+    // back wave layer
+    ctx.beginPath();
+    ctx.moveTo(-14, H+14);
+    for (var bx=-14; bx<=W+14; bx+=10){
+      var by = waveY(scroll*0.92 + bx + 260) + 16;
+      ctx.lineTo(bx, by);
+    }
+    ctx.lineTo(W+14, H+14); ctx.closePath();
+    ctx.fillStyle = 'rgba(0,150,178,0.45)'; ctx.fill();
+
+    // main wave
+    ctx.beginPath();
+    ctx.moveTo(-14, H+14);
+    for (var x=-14; x<=W+14; x+=8){
+      ctx.lineTo(x, waveY(scroll + x));
+    }
+    ctx.lineTo(W+14, H+14); ctx.closePath();
+    var wg = ctx.createLinearGradient(0, 260, 0, H);
+    wg.addColorStop(0, '#17c3b2'); wg.addColorStop(0.35, '#0a97b8'); wg.addColorStop(1, '#005f8f');
+    ctx.fillStyle = wg; ctx.fill();
+
+    // foam crest
+    ctx.beginPath();
+    for (var fx=-14; fx<=W+14; fx+=8){
+      var fy = waveY(scroll + fx);
+      if (fx===-14) ctx.moveTo(fx, fy); else ctx.lineTo(fx, fy);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 7; ctx.lineCap='round'; ctx.stroke();
+    ctx.beginPath();
+    for (var fx2=-14; fx2<=W+14; fx2+=8){
+      var fy2 = waveY(scroll + fx2) + 12;
+      if (fx2===-14) ctx.moveTo(fx2, fy2); else ctx.lineTo(fx2, fy2);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.30)'; ctx.lineWidth = 4; ctx.stroke();
+
+    // stars
+    for (var s=0;s<stars.length;s++){
+      var st = stars[s]; if (st.taken) continue;
+      var stx = st.wx - scroll, sty = waveY(st.wx) - st.off + Math.sin(frame*0.06 + st.wx)*5;
+      if (stx < -30 || stx > W+30) continue;
+      drawStar(stx, sty, 13, '#ffb81c', '#12212b');
+    }
+
+    // particles
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    for (var p=0;p<particles.length;p++){
+      var pt = particles[p];
+      ctx.globalAlpha = Math.max(0, pt.life/30);
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // surfer
+    drawSurfer();
+
+    // floaters
+    ctx.textAlign = 'center';
+    for (var f=0;f<floaters.length;f++){
+      var fl = floaters[f];
+      ctx.globalAlpha = Math.max(0, Math.min(1, fl.life/25));
+      ctx.font = '900 19px "DM Sans", sans-serif';
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,30,40,0.7)';
+      ctx.strokeText(fl.txt, fl.x, fl.y);
+      ctx.fillStyle = fl.color; ctx.fillText(fl.txt, fl.x, fl.y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function drawStar(x, y, r, fill, stroke){
+    ctx.save(); ctx.translate(x,y); ctx.rotate(frame*0.03);
+    ctx.beginPath();
+    for (var i=0;i<10;i++){
+      var ang = (Math.PI/5)*i - Math.PI/2;
+      var rad = i%2===0 ? r : r*0.5;
+      var px = Math.cos(ang)*rad, py = Math.sin(ang)*rad;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = stroke; ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSurfer(){
+    var wx = scroll + SX;
+    var slope = waveSlope(wx);
+    var ang = airborne ? (flipRot + balance*0.004) : slope + balance*0.006;
+    var y = (state==='falling') ? waveY(wx)+16 : sy;
+    var tumble = (state==='falling') ? fallTimer*0.22 : 0;
+
+    ctx.save();
+    ctx.translate(SX, y);
+    ctx.rotate(ang + tumble);
+
+    var grabbing = trick && trick.kind==='grab';
+    var crouch = grabbing ? 7 : 0;
+
+    // board (spins on shove-it)
+    ctx.save();
+    ctx.rotate(spinRot);
+    ctx.fillStyle = '#ff5a3c';
+    ctx.strokeStyle = '#12212b'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-34, 2); ctx.quadraticCurveTo(0, 8, 36, 0); ctx.quadraticCurveTo(38, -3, 30, -3.5);
+    ctx.lineTo(-28, -3.5); ctx.quadraticCurveTo(-36, -3, -34, 2);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffb81c';
+    ctx.fillRect(-20, -3.5, 40, 2.4);
+    ctx.restore();
+
+    // legs
+    ctx.strokeStyle = '#12212b'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-14, -2); ctx.lineTo(-8, -16 + crouch); ctx.lineTo(-2, -26 + crouch); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(14, -2); ctx.lineTo(10, -15 + crouch); ctx.lineTo(3, -26 + crouch); ctx.stroke();
+    // torso
+    ctx.strokeStyle = '#0aa79b'; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(0, -27 + crouch); ctx.lineTo(3, -46 + crouch); ctx.stroke();
+    // arms — out wide for balance, one down when grabbing
+    ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 4.5;
+    var leanArm = balance * 0.35;
+    ctx.beginPath(); ctx.moveTo(3, -43 + crouch); ctx.lineTo(-16, -38 + crouch + leanArm*0.2); ctx.stroke();
+    if (grabbing){
+      ctx.beginPath(); ctx.moveTo(3, -43 + crouch); ctx.lineTo(16, -8); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(3, -43 + crouch); ctx.lineTo(19, -40 + crouch - leanArm*0.2); ctx.stroke();
+    }
+    // head
+    ctx.fillStyle = '#c98a4b';
+    ctx.beginPath(); ctx.arc(5, -56 + crouch, 9, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#3a2410';
+    ctx.beginPath(); ctx.arc(5, -60 + crouch, 9, Math.PI, Math.PI*2); ctx.fill();
+    // shades
+    ctx.fillStyle = '#12212b';
+    ctx.fillRect(6, -58 + crouch, 9, 3.4);
+
+    ctx.restore();
+  }
+
+  // ---------- main loop ----------
+  function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  reset();
+  updateHUD();
+  loop();
+})();
+</script>
+</body>
+</html>

@@ -9,6 +9,7 @@ One repository, many small games. The home page (`index.html`) is the arcade cab
 | 🍙 Spam Musubi Stand | [`spam-musubi-game/`](spam-musubi-game/) | A 2-minute lunch rush: build musubi to order, time the sear, beat the clock. |
 | 🚚 Mail Truck Flip | [`mail-truck-flip/`](mail-truck-flip/) | Slingshot a mail truck off a ramp and flip it — packages fly, landings get judged. |
 | 🏝️ Tropical Island Builder | [`tropical-island-builder/`](tropical-island-builder/) | A tiny SimCity on a tropical island: build with shells, grow population and tourism, weather the storms. |
+| 🏄 Wave Rider | [`wave-rider/`](wave-rider/) | Endless surfing: ride the wave, keep your balance, chain tricks for combos. |
 
 ## Play online
 
